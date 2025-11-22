@@ -50,14 +50,14 @@ npm run dev
 npm start
 ```
 
-The server will run on `http://localhost:3001` by default.
+The server will run on `https://tbfmap-production.up.railway.app` by default.
 
 ### 5. Configure Frontend
 
 In your frontend `.env.local` file, add:
 
 ```env
-VITE_API_URL=http://localhost:3001
+VITE_API_URL=https://tbfmap-production.up.railway.app
 ```
 
 For production, update to your deployed API URL:

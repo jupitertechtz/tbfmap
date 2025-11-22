@@ -44,14 +44,14 @@ npm run start:upload
 npm run dev:upload
 ```
 
-The server will run on `http://localhost:3001` by default.
+The server will run on `https://tbfmap-production.up.railway.app` by default.
 
 ### 4. Configure Frontend
 
 In your frontend `.env.local` file, ensure:
 
 ```env
-VITE_API_URL=http://localhost:3001
+VITE_API_URL=https://tbfmap-production.up.railway.app
 ```
 
 For production, update to your deployed API URL:
@@ -101,7 +101,7 @@ Uploads a file for a team.
   "file": {
     "fileName": "original-filename.png",
     "filePath": "teams/{teamId}/logo/{timestamp}-{random}-filename.png",
-    "fileUrl": "http://localhost:3001/files/teams/{teamId}/logo/{filename}",
+    "fileUrl": "https://tbfmap-production.up.railway.app/files/teams/{teamId}/logo/{filename}",
     "fileSize": 123456,
     "mimeType": "image/png"
   }
@@ -112,8 +112,8 @@ Uploads a file for a team.
 
 Serves uploaded files. Files are accessible via:
 ```
-http://localhost:3001/files/teams/{teamId}/logo/{filename}
-http://localhost:3001/files/teams/{teamId}/documents/{filename}
+https://tbfmap-production.up.railway.app/files/teams/{teamId}/logo/{filename}
+https://tbfmap-production.up.railway.app/files/teams/{teamId}/documents/{filename}
 ```
 
 ### DELETE `/delete-file`

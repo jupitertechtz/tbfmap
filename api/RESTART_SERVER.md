@@ -45,12 +45,12 @@ After restarting, check:
 2. Test the upload endpoint:
    ```powershell
    # Should return 400 (Bad Request) because no file was sent, but endpoint should exist
-   Invoke-WebRequest -Uri "http://localhost:3001/upload-team-file" -Method POST
+   Invoke-WebRequest -Uri "https://tbfmap-production.up.railway.app/upload-team-file" -Method POST
    ```
 
 3. Check health endpoint:
    ```powershell
-   Invoke-WebRequest -Uri "http://localhost:3001/health" -UseBasicParsing
+   Invoke-WebRequest -Uri "https://tbfmap-production.up.railway.app/health" -UseBasicParsing
    ```
 
 ## What Was Fixed

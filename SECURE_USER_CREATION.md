@@ -133,7 +133,7 @@ Update `src/services/userService.js`:
 async createUser({ email, password, fullName, role, phone }) {
   try {
     // Call backend API instead of using admin client
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://tbfmap-production.up.railway.app';
     
     const response = await fetch(`${apiUrl}/create-user`, {
       method: 'POST',

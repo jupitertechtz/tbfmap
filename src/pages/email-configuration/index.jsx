@@ -35,7 +35,10 @@ const EmailConfigurationPage = () => {
   const [banner, setBanner] = useState(null);
   const [emailConfig, setEmailConfig] = useState({
     email: 'tanzaniabasketball@gmail.com',
-    apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:3001',
+    // Always use Railway URL - ignore VITE_API_URL if it's set to old URL
+    apiUrl: (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('api.tanzaniabasketball.com')) 
+      ? import.meta.env.VITE_API_URL 
+      : 'https://tbfmap-production.up.railway.app',
     status: 'configured',
   });
 

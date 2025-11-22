@@ -183,7 +183,7 @@ app.post('/upload-team-file', upload.single('file'), handleMulterError, (req, re
     const relativePath = `teams/${teamId}/${folder}/${req.file.filename}`;
     
     // Generate URL to access the file
-    const apiUrl = process.env.API_URL || 'http://localhost:3001';
+    const apiUrl = process.env.API_URL || 'https://tbfmap-production.up.railway.app';
     const fileUrl = `${apiUrl}/files/${relativePath}`;
 
     res.json({
@@ -297,7 +297,7 @@ app.post('/upload-player-file', upload.single('file'), handleMulterError, (req, 
     const relativePath = `players/${playerId}/${folder}/${req.file.filename}`;
     
     // Generate URL to access the file
-    const apiUrl = process.env.API_URL || 'http://localhost:3001';
+    const apiUrl = process.env.API_URL || 'https://tbfmap-production.up.railway.app';
     const fileUrl = `${apiUrl}/files/${relativePath}`;
 
     res.json({
@@ -388,7 +388,7 @@ app.post('/upload-league-file', upload.single('file'), handleMulterError, (req, 
     const relativePath = `leagues/${leagueId}/${folder}/${req.file.filename}`;
     
     // Generate URL to access the file
-    const apiUrl = process.env.API_URL || 'http://localhost:3001';
+    const apiUrl = process.env.API_URL || 'https://tbfmap-production.up.railway.app';
     const fileUrl = `${apiUrl}/files/${relativePath}`;
 
     res.json({
@@ -478,7 +478,7 @@ app.post('/upload-official-file', upload.single('file'), handleMulterError, (req
     const relativePath = `officials/${officialId}/${folder}/${req.file.filename}`;
     
     // Generate URL to access the file
-    const apiUrl = process.env.API_URL || 'http://localhost:3001';
+    const apiUrl = process.env.API_URL || 'https://tbfmap-production.up.railway.app';
     const fileUrl = `${apiUrl}/files/${relativePath}`;
 
     res.json({

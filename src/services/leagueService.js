@@ -310,7 +310,8 @@ export const leagueService = {
   // Upload league document file
   async uploadFile(file, leagueId, fileType = 'document') {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const apiUrl = import.meta.env.VITE_API_URL || 
+        'https://tbfmap-production.up.railway.app';
       
       const formData = new FormData();
       formData.append('file', file);
@@ -334,7 +335,7 @@ export const leagueService = {
       console.error('Error details:', {
         message: error.message,
         stack: error.stack,
-        apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:3001',
+        apiUrl: import.meta.env.VITE_API_URL || 'https://tbfmap-production.up.railway.app',
         leagueId,
         fileType,
         fileName: file?.name,
@@ -459,14 +460,15 @@ export const leagueService = {
   // Get file URL from path
   getFileUrl(filePath) {
     if (!filePath) return null;
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://tbfmap-production.up.railway.app';
     return `${apiUrl}/files/${filePath}`;
   },
 
   // Delete file from storage
   async deleteFile(filePath) {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const apiUrl = import.meta.env.VITE_API_URL || 
+        'https://tbfmap-production.up.railway.app';
       
       const response = await fetch(`${apiUrl}/delete-file`, {
         method: 'DELETE',

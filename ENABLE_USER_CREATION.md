@@ -80,13 +80,13 @@ $body = @{
     role = "admin"
 } | ConvertTo-Json
 
-Invoke-WebRequest -Uri "http://localhost:3001/create-user" -Method POST -ContentType "application/json" -Body $body
+Invoke-WebRequest -Uri "https://tbfmap-production.up.railway.app/create-user" -Method POST -ContentType "application/json" -Body $body
 ```
 
 Or check the health endpoint:
 
 ```bash
-Invoke-WebRequest -Uri "http://localhost:3001/health" -UseBasicParsing
+Invoke-WebRequest -Uri "https://tbfmap-production.up.railway.app/health" -UseBasicParsing
 ```
 
 ## Step 4: Verify Frontend Configuration
@@ -94,7 +94,7 @@ Invoke-WebRequest -Uri "http://localhost:3001/health" -UseBasicParsing
 In your frontend `.env.local` (if it exists), make sure:
 
 ```env
-VITE_API_URL=http://localhost:3001
+VITE_API_URL=https://tbfmap-production.up.railway.app
 ```
 
 **Note**: You do NOT need `VITE_SUPABASE_SERVICE_ROLE_KEY` in the frontend anymore! It's only needed in `api/.env`.
@@ -126,7 +126,7 @@ VITE_API_URL=http://localhost:3001
 4. **Test API endpoint directly**:
    ```powershell
    # Test health endpoint
-   Invoke-WebRequest -Uri "http://localhost:3001/health" -UseBasicParsing
+   Invoke-WebRequest -Uri "https://tbfmap-production.up.railway.app/health" -UseBasicParsing
    
    # Test user creation endpoint
    $body = @{
@@ -136,7 +136,7 @@ VITE_API_URL=http://localhost:3001
        role = "admin"
    } | ConvertTo-Json
    
-   Invoke-WebRequest -Uri "http://localhost:3001/create-user" -Method POST -ContentType "application/json" -Body $body
+   Invoke-WebRequest -Uri "https://tbfmap-production.up.railway.app/create-user" -Method POST -ContentType "application/json" -Body $body
    ```
 
 ### "Admin client not configured"

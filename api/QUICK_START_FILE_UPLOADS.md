@@ -33,8 +33,8 @@ The directory structure is created automatically when files are uploaded.
 ## Accessing Files
 
 Once uploaded, files are accessible at:
-- `http://localhost:3001/files/teams/{teamId}/logo/{filename}`
-- `http://localhost:3001/files/teams/{teamId}/documents/{filename}`
+- `https://tbfmap-production.up.railway.app/files/teams/{teamId}/logo/{filename}`
+- `https://tbfmap-production.up.railway.app/files/teams/{teamId}/documents/{filename}`
 
 ## Database Storage
 

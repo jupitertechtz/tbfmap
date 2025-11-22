@@ -34,15 +34,15 @@ TBF API server running on port 3001
 Email service: Available
 File upload service: Available
 User creation service: Available
-Health check: http://localhost:3001/health
-Files served at: http://localhost:3001/files/
+Health check: https://tbfmap-production.up.railway.app/health
+Files served at: https://tbfmap-production.up.railway.app/files/
 ```
 
 ### Step 4: Test the Endpoint
 Open a browser or use PowerShell:
 ```powershell
 # Should return 400 (Bad Request) - this means the endpoint exists!
-Invoke-WebRequest -Uri "http://localhost:3001/upload-league-file" -Method POST
+Invoke-WebRequest -Uri "https://tbfmap-production.up.railway.app/upload-league-file" -Method POST
 ```
 
 If you get a 400 error (not 404), the endpoint is working correctly!

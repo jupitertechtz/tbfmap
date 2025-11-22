@@ -34,7 +34,7 @@ The `team_documents` table stores:
   - This is the **primary** storage method
 
 - **`file_url`** (Secondary): Full URL to access the file
-  - Format: `http://localhost:3001/files/teams/{teamId}/logo/{filename}`
+  - Format: `https://tbfmap-production.up.railway.app/files/teams/{teamId}/logo/{filename}`
   - Used for backward compatibility and direct access
   - Can be generated from `file_path` using `teamService.getFileUrl(file_path)`
 
@@ -44,17 +44,17 @@ The `team_documents` table stores:
 
 1. User selects a file in the frontend
 2. Frontend calls `teamService.uploadFile(file, teamId, fileType)`
-3. File is uploaded to local API: `POST http://localhost:3001/upload-team-file`
+3. File is uploaded to local API: `POST https://tbfmap-production.up.railway.app/upload-team-file`
 4. API saves file locally in `api/uploads/teams/{teamId}/logo/` or `api/uploads/teams/{teamId}/documents/`
 5. API returns:
    - `filePath`: `teams/{teamId}/logo/{filename}` (stored in database)
-   - `fileUrl`: `http://localhost:3001/files/teams/{teamId}/logo/{filename}` (for access)
+   - `fileUrl`: `https://tbfmap-production.up.railway.app/files/teams/{teamId}/logo/{filename}` (for access)
 6. Frontend calls `teamService.saveTeamDocument()` to save path to database
 
 ### 2. File Access
 
 Files are served via the API server:
-- URL: `http://localhost:3001/files/teams/{teamId}/logo/{filename}`
+- URL: `https://tbfmap-production.up.railway.app/files/teams/{teamId}/logo/{filename}`
 - The API uses `express.static()` to serve files from `api/uploads/` directory
 - Files are accessible via HTTP GET requests
 
@@ -62,7 +62,7 @@ Files are served via the API server:
 
 The `teamService.getFileUrl(filePath)` function:
 - Takes a file path: `teams/{teamId}/logo/{filename}`
-- Constructs full URL: `http://localhost:3001/files/teams/{teamId}/logo/{filename}`
+- Constructs full URL: `https://tbfmap-production.up.railway.app/files/teams/{teamId}/logo/{filename}`
 - Used when displaying files in the UI
 
 ## API Endpoints
@@ -86,7 +86,7 @@ Uploads a file to local storage.
   "file": {
     "fileName": "original-filename.png",
     "filePath": "teams/{teamId}/logo/{timestamp}-{random}-filename.png",
-    "fileUrl": "http://localhost:3001/files/teams/{teamId}/logo/{filename}",
+    "fileUrl": "https://tbfmap-production.up.railway.app/files/teams/{teamId}/logo/{filename}",
     "fileSize": 123456,
     "mimeType": "image/png"
   }
@@ -97,7 +97,7 @@ Uploads a file to local storage.
 Serves uploaded files.
 
 **Example:**
-- `GET http://localhost:3001/files/teams/{teamId}/logo/{filename}`
+- `GET https://tbfmap-production.up.railway.app/files/teams/{teamId}/logo/{filename}`
 
 ### DELETE `/delete-file`
 Deletes a file from local storage.
@@ -134,7 +134,7 @@ In your `.env` file (or environment):
 
 ```env
 # API Server URL (used by frontend)
-VITE_API_URL=http://localhost:3001
+VITE_API_URL=https://tbfmap-production.up.railway.app
 
 # API Server Port (for backend)
 PORT=3001
@@ -143,7 +143,7 @@ PORT=3001
 ### Frontend Configuration
 
 The frontend uses `VITE_API_URL` to determine where to upload files:
-- Default: `http://localhost:3001`
+- Default: `https://tbfmap-production.up.railway.app`
 - Production: Set to your deployed API URL
 
 ## File Organization

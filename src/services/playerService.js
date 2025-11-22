@@ -7,7 +7,8 @@ const getFileUrlHelper = (filePath) => {
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
       return filePath;
     }
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    const apiUrl = import.meta.env.VITE_API_URL || 
+      'https://tbfmap-production.up.railway.app';
     return `${apiUrl}/files/${filePath}`;
   } catch (error) {
     console.error('Error getting file URL:', error);
@@ -632,7 +633,8 @@ export const playerService = {
       }
 
       // Get API URL from environment or use default
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const apiUrl = import.meta.env.VITE_API_URL || 
+      'https://tbfmap-production.up.railway.app';
 
       // Create FormData for file upload
       const formData = new FormData();
@@ -669,7 +671,7 @@ export const playerService = {
 
       return {
         path: result.file.filePath, // Local file path: players/{playerId}/photo/... or players/{playerId}/documents/...
-        url: result.file.fileUrl,   // URL to access the file: http://localhost:3001/files/players/{playerId}/...
+        url: result.file.fileUrl,   // URL to access the file: https://tbfmap-production.up.railway.app/files/players/{playerId}/...
         fileName: result.file.fileName,
         fileSize: result.file.fileSize,
       };
@@ -679,7 +681,7 @@ export const playerService = {
         message: error?.message,
         stack: error?.stack,
         name: error?.name,
-        apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:3001',
+        apiUrl: import.meta.env.VITE_API_URL || 'https://tbfmap-production.up.railway.app',
         playerId,
         fileType,
         fileName: file?.name,
@@ -691,7 +693,7 @@ export const playerService = {
           error?.message?.includes('NetworkError') ||
           error?.message?.includes('Network request failed') ||
           error?.name === 'TypeError') {
-        throw new Error(`Cannot connect to file upload server. Please ensure the API server is running on ${import.meta.env.VITE_API_URL || 'http://localhost:3001'}. Error: ${error?.message}`);
+        throw new Error(`Cannot connect to file upload server. Please ensure the API server is running on ${import.meta.env.VITE_API_URL || 'https://tbfmap-production.up.railway.app'}. Error: ${error?.message}`);
       }
       
       // Re-throw with original message if it's already descriptive
@@ -713,7 +715,7 @@ export const playerService = {
 
       // Build insert payload
       // file_path: Local file path (e.g., players/{playerId}/photo/{filename}) - PRIMARY storage
-      // file_url: Full URL to access file (e.g., http://localhost:3001/files/players/{playerId}/photo/{filename}) - for backward compatibility
+      // file_url: Full URL to access file (e.g., https://tbfmap-production.up.railway.app/files/players/{playerId}/photo/{filename}) - for backward compatibility
       const insertPayload = {
         player_id: playerId,
         document_type: documentData?.documentType || 'other',
@@ -764,8 +766,9 @@ export const playerService = {
       
       // Construct URL from local file path
       // filePath is stored as: players/{playerId}/photo/{filename}
-      // URL will be: http://localhost:3001/files/players/{playerId}/photo/{filename}
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      // URL will be: https://tbfmap-production.up.railway.app/files/players/{playerId}/photo/{filename}
+      const apiUrl = import.meta.env.VITE_API_URL || 
+      'https://tbfmap-production.up.railway.app';
       return `${apiUrl}/files/${filePath}`;
     } catch (error) {
       console.error('Error getting file URL:', error);
@@ -800,7 +803,8 @@ export const playerService = {
     try {
       if (!filePath) return;
 
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const apiUrl = import.meta.env.VITE_API_URL || 
+      'https://tbfmap-production.up.railway.app';
 
       const response = await fetch(`${apiUrl}/delete-file`, {
         method: 'DELETE',

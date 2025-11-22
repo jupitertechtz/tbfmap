@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { sendInvitationEmail } from './emailService';
 
-const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const apiUrl = import.meta.env.VITE_API_URL || 'https://tbfmap-production.up.railway.app';
 
 // Helper function to get file URL from file path
 const getFileUrlHelper = (filePath) => {
@@ -279,7 +279,7 @@ export const officialService = {
 
       // Build insert payload
       // file_path: Local file path (e.g., officials/{officialId}/photo/{filename}) - PRIMARY storage
-      // file_url: Full URL to access file (e.g., http://localhost:3001/files/officials/{officialId}/photo/{filename}) - for backward compatibility
+      // file_url: Full URL to access file (e.g., https://tbfmap-production.up.railway.app/files/officials/{officialId}/photo/{filename}) - for backward compatibility
       const insertPayload = {
         official_id: officialId,
         document_type: documentData?.documentType || 'other',

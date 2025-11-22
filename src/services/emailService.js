@@ -23,10 +23,11 @@ const GMAIL_CONFIG = {
  */
 export const sendInvitationEmail = async ({ to, fullName, email, password, role, loginUrl }) => {
   try {
-    // Get API URL from environment or use default
-    // In production, set VITE_API_URL to your deployed API endpoint
-    // e.g., VITE_API_URL=http://localhost:3001 or VITE_API_URL=https://api.yourdomain.com
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    // Get API URL from environment or use Railway production URL as default
+    // Ignore old URL if environment variable is set to it
+    const apiUrl = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('api.tanzaniabasketball.com'))
+      ? import.meta.env.VITE_API_URL 
+      : 'https://tbfmap-production.up.railway.app';
     
     const response = await fetch(`${apiUrl}/send-invitation`, {
       method: 'POST',
@@ -184,8 +185,11 @@ This is an automated message. Please do not reply to this email.
  */
 export const sendProfileUpdateEmail = async ({ to, fullName, changes }) => {
   try {
-    // Get API URL from environment or use default
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    // Get API URL from environment or use Railway production URL as default
+    // Ignore old URL if environment variable is set to it
+    const apiUrl = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('api.tanzaniabasketball.com'))
+      ? import.meta.env.VITE_API_URL 
+      : 'https://tbfmap-production.up.railway.app';
     
     const response = await fetch(`${apiUrl}/send-profile-update`, {
       method: 'POST',
@@ -331,8 +335,11 @@ This is an automated message. Please do not reply to this email.
  */
 export const sendPasswordResetEmail = async ({ to, fullName, resetUrl }) => {
   try {
-    // Get API URL from environment or use default
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    // Get API URL from environment or use Railway production URL as default
+    // Ignore old URL if environment variable is set to it
+    const apiUrl = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('api.tanzaniabasketball.com'))
+      ? import.meta.env.VITE_API_URL 
+      : 'https://tbfmap-production.up.railway.app';
     
     const response = await fetch(`${apiUrl}/send-password-reset`, {
       method: 'POST',

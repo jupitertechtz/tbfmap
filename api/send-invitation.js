@@ -37,6 +37,7 @@ if (!GMAIL_CONFIG.password) {
 }
 
 // Create reusable transporter object using Gmail SMTP
+// Enhanced configuration for cloud environments (Railway, etc.)
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 587,
@@ -45,6 +46,24 @@ const transporter = nodemailer.createTransport({
     user: GMAIL_CONFIG.email,
     pass: GMAIL_CONFIG.password,
   },
+  // Connection timeout settings for cloud environments
+  connectionTimeout: 10000, // 10 seconds
+  greetingTimeout: 10000, // 10 seconds
+  socketTimeout: 10000, // 10 seconds
+  // Retry configuration
+  pool: true,
+  maxConnections: 1,
+  maxMessages: 3,
+  // Additional options for better reliability
+  tls: {
+    // Do not fail on invalid certificates
+    rejectUnauthorized: false,
+    // Use TLS 1.2 or higher
+    minVersion: 'TLSv1.2',
+  },
+  // Debug mode (set to true for troubleshooting)
+  debug: process.env.NODE_ENV === 'development',
+  logger: process.env.NODE_ENV === 'development',
 });
 
 // Email template
@@ -121,6 +140,18 @@ const generateEmailHTML = ({ fullName, email, password, role, loginUrl }) => {
   `.trim();
 };
 
+// Verify transporter connection (optional, can be called before sending)
+const verifyTransporter = async () => {
+  try {
+    await transporter.verify();
+    console.log('✅ SMTP server connection verified');
+    return true;
+  } catch (error) {
+    console.error('❌ SMTP server connection failed:', error.message);
+    return false;
+  }
+};
+
 // API endpoint
 app.post('/send-invitation', async (req, res) => {
   try {
@@ -133,17 +164,32 @@ app.post('/send-invitation', async (req, res) => {
       });
     }
 
+    // Validate Gmail configuration
+    if (!GMAIL_CONFIG.password) {
+      return res.status(500).json({
+        error: 'Email service not configured',
+        message: 'GMAIL_PASSWORD is not set. Please configure the email service.',
+      });
+    }
+
     // Generate email content
     const htmlContent = generateEmailHTML({ fullName, email, password, role, loginUrl });
 
-    // Send email
-    const info = await transporter.sendMail({
+    // Send email with timeout
+    const sendPromise = transporter.sendMail({
       from: `"Tanzania Basketball Federation" <${GMAIL_CONFIG.email}>`,
       to: to,
       subject: 'Welcome to Tanzania Basketball Federation - Account Invitation',
       html: htmlContent,
       text: `Welcome to Tanzania Basketball Federation!\n\nDear ${fullName},\n\nYou have been invited to join the TBF Management System as a ${role.replace(/_/g, ' ')}.\n\nYour Account Details:\n- Email: ${email}\n- Temporary Password: ${password}\n- Role: ${role.replace(/_/g, ' ')}\n\n⚠️ Important: Please change your password after your first login.\n\n${loginUrl ? `Login: ${loginUrl}` : ''}\n\nBest regards,\nTanzania Basketball Federation`,
     });
+
+    // Add a timeout wrapper (30 seconds total)
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Email sending timeout after 30 seconds')), 30000);
+    });
+
+    const info = await Promise.race([sendPromise, timeoutPromise]);
 
     console.log('Email sent successfully:', info.messageId);
 
@@ -154,9 +200,21 @@ app.post('/send-invitation', async (req, res) => {
     });
   } catch (error) {
     console.error('Error sending email:', error);
+    
+    // Provide more helpful error messages
+    let errorMessage = error.message;
+    if (error.code === 'ETIMEDOUT' || error.message.includes('timeout')) {
+      errorMessage = 'Connection timeout. Please check network connectivity and Gmail SMTP settings. If using Railway, ensure outbound SMTP connections are allowed.';
+    } else if (error.code === 'EAUTH') {
+      errorMessage = 'Authentication failed. Please verify Gmail App Password is correct.';
+    } else if (error.code === 'ECONNREFUSED') {
+      errorMessage = 'Connection refused. Gmail SMTP server may be unreachable.';
+    }
+    
     res.status(500).json({
       error: 'Failed to send invitation email',
-      message: error.message,
+      message: errorMessage,
+      code: error.code || 'UNKNOWN_ERROR',
     });
   }
 });

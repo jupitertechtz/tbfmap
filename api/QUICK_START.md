@@ -48,8 +48,8 @@ Gmail configured: tanzaniabasketball@gmail.com
 ### 5. Test the Health Endpoint
 
 Open your browser or use curl to test:
-- Browser: http://localhost:3001/health
-- Command line: `curl http://localhost:3001/health`
+- Browser: https://tbfmap-production.up.railway.app/health
+- Command line: `curl https://tbfmap-production.up.railway.app/health`
 
 You should see:
 ```json
@@ -104,7 +104,7 @@ require('dotenv').config();
 1. Keep the server running in a terminal window
 2. Make sure your frontend `.env.local` has:
    ```
-   VITE_API_URL=http://localhost:3001
+   VITE_API_URL=https://tbfmap-production.up.railway.app
    ```
 3. Test email sending from the Email Configuration page in your app
 

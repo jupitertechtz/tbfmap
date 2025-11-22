@@ -449,7 +449,8 @@ export const teamService = {
       }
 
       // Get API URL from environment or use default
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const apiUrl = import.meta.env.VITE_API_URL || 
+        'https://tbfmap-production.up.railway.app';
 
       // Create FormData for file upload
       const formData = new FormData();
@@ -486,7 +487,7 @@ export const teamService = {
 
       return {
         path: result.file.filePath, // Local file path: teams/{teamId}/logo/... or teams/{teamId}/documents/...
-        url: result.file.fileUrl,   // URL to access the file: http://localhost:3001/files/teams/{teamId}/...
+        url: result.file.fileUrl,   // URL to access the file: https://tbfmap-production.up.railway.app/files/teams/{teamId}/...
         fileName: result.file.fileName,
         fileSize: result.file.fileSize,
       };
@@ -496,7 +497,7 @@ export const teamService = {
         message: error?.message,
         stack: error?.stack,
         name: error?.name,
-        apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:3001',
+        apiUrl: import.meta.env.VITE_API_URL || 'https://tbfmap-production.up.railway.app',
         teamId,
         fileType,
         fileName: file?.name,
@@ -508,7 +509,7 @@ export const teamService = {
           error?.message?.includes('NetworkError') ||
           error?.message?.includes('Network request failed') ||
           error?.name === 'TypeError') {
-        throw new Error(`Cannot connect to file upload server. Please ensure the API server is running on ${import.meta.env.VITE_API_URL || 'http://localhost:3001'}. Error: ${error?.message}`);
+        throw new Error(`Cannot connect to file upload server. Please ensure the API server is running on ${import.meta.env.VITE_API_URL || 'https://tbfmap-production.up.railway.app'}. Error: ${error?.message}`);
       }
       
       // Re-throw with original message if it's already descriptive
@@ -530,7 +531,7 @@ export const teamService = {
 
       // Build insert payload
       // file_path: Local file path (e.g., teams/{teamId}/logo/{filename}) - PRIMARY storage
-      // file_url: Full URL to access file (e.g., http://localhost:3001/files/teams/{teamId}/logo/{filename}) - for backward compatibility
+      // file_url: Full URL to access file (e.g., https://tbfmap-production.up.railway.app/files/teams/{teamId}/logo/{filename}) - for backward compatibility
       const insertPayload = {
         team_id: teamId,
         document_type: documentData?.documentType || 'other',
@@ -581,8 +582,9 @@ export const teamService = {
       
       // Construct URL from local file path
       // filePath is stored as: teams/{teamId}/logo/{filename}
-      // URL will be: http://localhost:3001/files/teams/{teamId}/logo/{filename}
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      // URL will be: https://tbfmap-production.up.railway.app/files/teams/{teamId}/logo/{filename}
+      const apiUrl = import.meta.env.VITE_API_URL || 
+        'https://tbfmap-production.up.railway.app';
       return `${apiUrl}/files/${filePath}`;
     } catch (error) {
       console.error('Error getting file URL:', error);
@@ -596,7 +598,8 @@ export const teamService = {
       if (!filePath) return;
 
       // Get API URL from environment or use default
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const apiUrl = import.meta.env.VITE_API_URL || 
+        'https://tbfmap-production.up.railway.app';
 
       const response = await fetch(`${apiUrl}/delete-file`, {
         method: 'DELETE',
