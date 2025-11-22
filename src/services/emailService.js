@@ -23,11 +23,8 @@ const GMAIL_CONFIG = {
  */
 export const sendInvitationEmail = async ({ to, fullName, email, password, role, loginUrl }) => {
   try {
-    // Get API URL from environment or use Railway production URL as default
-    // Ignore old URL if environment variable is set to it
-    const apiUrl = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('api.tanzaniabasketball.com'))
-      ? import.meta.env.VITE_API_URL 
-      : 'https://tbfmap-production.up.railway.app';
+    // Get API URL from environment or use production API URL as default
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
     
     const response = await fetch(`${apiUrl}/send-invitation`, {
       method: 'POST',
@@ -185,11 +182,8 @@ This is an automated message. Please do not reply to this email.
  */
 export const sendProfileUpdateEmail = async ({ to, fullName, changes }) => {
   try {
-    // Get API URL from environment or use Railway production URL as default
-    // Ignore old URL if environment variable is set to it
-    const apiUrl = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('api.tanzaniabasketball.com'))
-      ? import.meta.env.VITE_API_URL 
-      : 'https://tbfmap-production.up.railway.app';
+    // Get API URL from environment or use production API URL as default
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
     
     const response = await fetch(`${apiUrl}/send-profile-update`, {
       method: 'POST',
@@ -335,11 +329,8 @@ This is an automated message. Please do not reply to this email.
  */
 export const sendPasswordResetEmail = async ({ to, fullName, resetUrl }) => {
   try {
-    // Get API URL from environment or use Railway production URL as default
-    // Ignore old URL if environment variable is set to it
-    const apiUrl = (import.meta.env.VITE_API_URL && !import.meta.env.VITE_API_URL.includes('api.tanzaniabasketball.com'))
-      ? import.meta.env.VITE_API_URL 
-      : 'https://tbfmap-production.up.railway.app';
+    // Get API URL from environment or use production API URL as default
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
     
     const response = await fetch(`${apiUrl}/send-password-reset`, {
       method: 'POST',

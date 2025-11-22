@@ -311,7 +311,7 @@ export const leagueService = {
   async uploadFile(file, leagueId, fileType = 'document') {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 
-        'https://tbfmap-production.up.railway.app';
+        'https://api.tanzaniabasketball.com';
       
       const formData = new FormData();
       formData.append('file', file);
@@ -335,7 +335,7 @@ export const leagueService = {
       console.error('Error details:', {
         message: error.message,
         stack: error.stack,
-        apiUrl: import.meta.env.VITE_API_URL || 'https://tbfmap-production.up.railway.app',
+        apiUrl: import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com',
         leagueId,
         fileType,
         fileName: file?.name,
@@ -460,15 +460,30 @@ export const leagueService = {
   // Get file URL from path
   getFileUrl(filePath) {
     if (!filePath) return null;
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://tbfmap-production.up.railway.app';
-    return `${apiUrl}/files/${filePath}`;
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
+      
+      // If path already contains http:// or https://, normalize old localhost URLs
+      if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+        // Replace old localhost:3001 URLs with new API URL
+        if (filePath.includes('localhost:3001')) {
+          return filePath.replace(/https?:\/\/localhost:3001/, apiUrl);
+        }
+        return filePath;
+      }
+      
+      return `${apiUrl}/files/${filePath}`;
+    } catch (error) {
+      console.error('Error getting file URL:', error);
+      return null;
+    }
   },
 
   // Delete file from storage
   async deleteFile(filePath) {
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 
-        'https://tbfmap-production.up.railway.app';
+        'https://api.tanzaniabasketball.com';
       
       const response = await fetch(`${apiUrl}/delete-file`, {
         method: 'DELETE',

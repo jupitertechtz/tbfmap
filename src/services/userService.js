@@ -44,7 +44,7 @@ export const userService = {
     try {
       // Use backend API for secure user creation (service role key stays server-side)
       const apiUrl = import.meta.env.VITE_API_URL || 
-        'https://tbfmap-production.up.railway.app';
+        'https://api.tanzaniabasketball.com';
       
       const response = await fetch(`${apiUrl}/create-user`, {
         method: 'POST',

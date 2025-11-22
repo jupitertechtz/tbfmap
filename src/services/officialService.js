@@ -1,14 +1,18 @@
 import { supabase } from '../lib/supabase';
 import { sendInvitationEmail } from './emailService';
 
-const apiUrl = import.meta.env.VITE_API_URL || 'https://tbfmap-production.up.railway.app';
+const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
 
 // Helper function to get file URL from file path
 const getFileUrlHelper = (filePath) => {
   if (!filePath) return null;
   try {
-    // If already a full URL, return as-is
+    // If already a full URL, normalize old localhost URLs
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      // Replace old localhost:3001 URLs with new API URL
+      if (filePath.includes('localhost:3001')) {
+        return filePath.replace(/https?:\/\/localhost:3001/, apiUrl);
+      }
       return filePath;
     }
     // Otherwise, construct API URL
@@ -279,7 +283,7 @@ export const officialService = {
 
       // Build insert payload
       // file_path: Local file path (e.g., officials/{officialId}/photo/{filename}) - PRIMARY storage
-      // file_url: Full URL to access file (e.g., https://tbfmap-production.up.railway.app/files/officials/{officialId}/photo/{filename}) - for backward compatibility
+      // file_url: Full URL to access file (e.g., https://api.tanzaniabasketball.com/files/officials/{officialId}/photo/{filename}) - for backward compatibility
       const insertPayload = {
         official_id: officialId,
         document_type: documentData?.documentType || 'other',
