@@ -35,7 +35,16 @@ const PORT = process.env.PORT || 3001;
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`TBF API server running on port ${PORT}`);
-    console.log(`Email service: Available`);
+    
+    // Check Resend configuration
+    const resendKey = process.env.RESEND_API_KEY;
+    if (resendKey) {
+      console.log(`Email service: Resend (configured)`);
+      console.log(`From email: ${process.env.FROM_EMAIL || 'Tanzania Basketball Federation <onboarding@resend.dev>'}`);
+    } else {
+      console.log(`Email service: Resend (⚠️  RESEND_API_KEY not set)`);
+    }
+    
     console.log(`File upload service: Available`);
     console.log(`User creation service: Available`);
     console.log(`Health check: http://localhost:${PORT}/health`);

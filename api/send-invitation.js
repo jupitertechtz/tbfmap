@@ -4,9 +4,11 @@
  * This is a Node.js/Express endpoint that can be deployed separately
  * or integrated into your backend server.
  * 
+ * Uses Resend for email delivery (works on all Railway plans, no SMTP needed)
+ * 
  * To use this:
- * 1. Install dependencies: npm install express nodemailer cors dotenv
- * 2. Set environment variables or update GMAIL_CONFIG below
+ * 1. Install dependencies: npm install express resend cors dotenv
+ * 2. Set RESEND_API_KEY environment variable
  * 3. Deploy this as a separate service or integrate into your backend
  */
 
@@ -14,57 +16,27 @@
 require('dotenv').config();
 
 const express = require('express');
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const cors = require('cors');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Gmail SMTP Configuration
-// IMPORTANT: Use Gmail App Password, not your regular password!
-// See README.md for instructions on how to generate an App Password
-const GMAIL_CONFIG = {
-  email: process.env.GMAIL_EMAIL || 'tanzaniabasketball@gmail.com',
-  password: process.env.GMAIL_PASSWORD || '',
-};
+// Resend Configuration
+// Get API key from: https://resend.com/api-keys
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const FROM_EMAIL = process.env.FROM_EMAIL || 'Tanzania Basketball Federation <onboarding@resend.dev>';
 
 // Validate configuration
-if (!GMAIL_CONFIG.password) {
-  console.error('⚠️  ERROR: GMAIL_PASSWORD is not set in .env file!');
-  console.error('Please create a .env file with your Gmail App Password.');
-  console.error('See GMAIL_APP_PASSWORD_SETUP.md for instructions.');
+if (!RESEND_API_KEY) {
+  console.error('⚠️  ERROR: RESEND_API_KEY is not set in environment variables!');
+  console.error('Please set RESEND_API_KEY in Railway environment variables.');
+  console.error('Get your API key from: https://resend.com/api-keys');
 }
 
-// Create reusable transporter object using Gmail SMTP
-// Enhanced configuration for cloud environments (Railway, etc.)
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: GMAIL_CONFIG.email,
-    pass: GMAIL_CONFIG.password,
-  },
-  // Connection timeout settings for cloud environments
-  connectionTimeout: 10000, // 10 seconds
-  greetingTimeout: 10000, // 10 seconds
-  socketTimeout: 10000, // 10 seconds
-  // Retry configuration
-  pool: true,
-  maxConnections: 1,
-  maxMessages: 3,
-  // Additional options for better reliability
-  tls: {
-    // Do not fail on invalid certificates
-    rejectUnauthorized: false,
-    // Use TLS 1.2 or higher
-    minVersion: 'TLSv1.2',
-  },
-  // Debug mode (set to true for troubleshooting)
-  debug: process.env.NODE_ENV === 'development',
-  logger: process.env.NODE_ENV === 'development',
-});
+// Initialize Resend client
+const resend = new Resend(RESEND_API_KEY);
 
 // Email template
 const generateEmailHTML = ({ fullName, email, password, role, loginUrl }) => {
@@ -140,14 +112,17 @@ const generateEmailHTML = ({ fullName, email, password, role, loginUrl }) => {
   `.trim();
 };
 
-// Verify transporter connection (optional, can be called before sending)
-const verifyTransporter = async () => {
+// Verify Resend configuration (optional, can be called before sending)
+const verifyResendConfig = async () => {
   try {
-    await transporter.verify();
-    console.log('✅ SMTP server connection verified');
+    if (!RESEND_API_KEY) {
+      console.error('❌ Resend API key not configured');
+      return false;
+    }
+    console.log('✅ Resend API key configured');
     return true;
   } catch (error) {
-    console.error('❌ SMTP server connection failed:', error.message);
+    console.error('❌ Resend configuration failed:', error.message);
     return false;
   }
 };
@@ -164,57 +139,45 @@ app.post('/send-invitation', async (req, res) => {
       });
     }
 
-    // Validate Gmail configuration
-    if (!GMAIL_CONFIG.password) {
+    // Validate Resend configuration
+    if (!RESEND_API_KEY) {
       return res.status(500).json({
         error: 'Email service not configured',
-        message: 'GMAIL_PASSWORD is not set. Please configure the email service.',
+        message: 'RESEND_API_KEY is not set. Please configure the email service in Railway environment variables.',
       });
     }
 
     // Generate email content
     const htmlContent = generateEmailHTML({ fullName, email, password, role, loginUrl });
+    const textContent = `Welcome to Tanzania Basketball Federation!\n\nDear ${fullName},\n\nYou have been invited to join the TBF Management System as a ${role.replace(/_/g, ' ')}.\n\nYour Account Details:\n- Email: ${email}\n- Temporary Password: ${password}\n- Role: ${role.replace(/_/g, ' ')}\n\n⚠️ Important: Please change your password after your first login.\n\n${loginUrl ? `Login: ${loginUrl}` : ''}\n\nBest regards,\nTanzania Basketball Federation`;
 
-    // Send email with timeout
-    const sendPromise = transporter.sendMail({
-      from: `"Tanzania Basketball Federation" <${GMAIL_CONFIG.email}>`,
+    // Send email using Resend
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
       to: to,
       subject: 'Welcome to Tanzania Basketball Federation - Account Invitation',
       html: htmlContent,
-      text: `Welcome to Tanzania Basketball Federation!\n\nDear ${fullName},\n\nYou have been invited to join the TBF Management System as a ${role.replace(/_/g, ' ')}.\n\nYour Account Details:\n- Email: ${email}\n- Temporary Password: ${password}\n- Role: ${role.replace(/_/g, ' ')}\n\n⚠️ Important: Please change your password after your first login.\n\n${loginUrl ? `Login: ${loginUrl}` : ''}\n\nBest regards,\nTanzania Basketball Federation`,
+      text: textContent,
     });
 
-    // Add a timeout wrapper (30 seconds total)
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Email sending timeout after 30 seconds')), 30000);
-    });
+    if (error) {
+      console.error('Resend API error:', error);
+      throw new Error(error.message || 'Failed to send email via Resend');
+    }
 
-    const info = await Promise.race([sendPromise, timeoutPromise]);
-
-    console.log('Email sent successfully:', info.messageId);
+    console.log('Email sent successfully via Resend:', data?.id);
 
     res.json({
       success: true,
       message: 'Invitation email sent successfully',
-      messageId: info.messageId,
+      messageId: data?.id,
     });
   } catch (error) {
     console.error('Error sending email:', error);
     
-    // Provide more helpful error messages
-    let errorMessage = error.message;
-    if (error.code === 'ETIMEDOUT' || error.message.includes('timeout')) {
-      errorMessage = 'Connection timeout. Please check network connectivity and Gmail SMTP settings. If using Railway, ensure outbound SMTP connections are allowed.';
-    } else if (error.code === 'EAUTH') {
-      errorMessage = 'Authentication failed. Please verify Gmail App Password is correct.';
-    } else if (error.code === 'ECONNREFUSED') {
-      errorMessage = 'Connection refused. Gmail SMTP server may be unreachable.';
-    }
-    
     res.status(500).json({
       error: 'Failed to send invitation email',
-      message: errorMessage,
-      code: error.code || 'UNKNOWN_ERROR',
+      message: error.message || 'Unknown error occurred while sending email',
     });
   }
 });
@@ -335,21 +298,34 @@ This is an automated message. Please do not reply to this email.
 © ${new Date().getFullYear()} Tanzania Basketball Federation. All rights reserved.
     `.trim();
 
-    // Send email
-    const info = await transporter.sendMail({
-      from: `"Tanzania Basketball Federation" <${GMAIL_CONFIG.email}>`,
+    // Validate Resend configuration
+    if (!RESEND_API_KEY) {
+      return res.status(500).json({
+        error: 'Email service not configured',
+        message: 'RESEND_API_KEY is not set. Please configure the email service.',
+      });
+    }
+
+    // Send email using Resend
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
       to: to,
       subject: 'Profile Updated - Tanzania Basketball Federation',
       html: htmlContent,
       text: textContent,
     });
 
-    console.log('Profile update email sent successfully:', info.messageId);
+    if (error) {
+      console.error('Resend API error:', error);
+      throw new Error(error.message || 'Failed to send email via Resend');
+    }
+
+    console.log('Profile update email sent successfully via Resend:', data?.id);
 
     res.json({
       success: true,
       message: 'Profile update email sent successfully',
-      messageId: info.messageId,
+      messageId: data?.id,
     });
   } catch (error) {
     console.error('Error sending profile update email:', error);
@@ -493,21 +469,34 @@ This is an automated message. Please do not reply to this email.
 © ${new Date().getFullYear()} Tanzania Basketball Federation. All rights reserved.
     `.trim();
 
-    // Send email
-    const info = await transporter.sendMail({
-      from: `"Tanzania Basketball Federation" <${GMAIL_CONFIG.email}>`,
+    // Validate Resend configuration
+    if (!RESEND_API_KEY) {
+      return res.status(500).json({
+        error: 'Email service not configured',
+        message: 'RESEND_API_KEY is not set. Please configure the email service.',
+      });
+    }
+
+    // Send email using Resend
+    const { data, error } = await resend.emails.send({
+      from: FROM_EMAIL,
       to: to,
       subject: 'Reset Your Password - Tanzania Basketball Federation',
       html: htmlContent,
       text: textContent,
     });
 
-    console.log('Password reset email sent successfully:', info.messageId);
+    if (error) {
+      console.error('Resend API error:', error);
+      throw new Error(error.message || 'Failed to send email via Resend');
+    }
+
+    console.log('Password reset email sent successfully via Resend:', data?.id);
 
     res.json({
       success: true,
       message: 'Password reset email sent successfully',
-      messageId: info.messageId,
+      messageId: data?.id,
     });
   } catch (error) {
     console.error('Error sending password reset email:', error);
@@ -520,7 +509,20 @@ This is an automated message. Please do not reply to this email.
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'email-api' });
+  const healthStatus = {
+    status: 'ok',
+    service: 'email-api',
+    emailProvider: 'Resend',
+    configured: !!RESEND_API_KEY,
+    fromEmail: FROM_EMAIL,
+    timestamp: new Date().toISOString(),
+  };
+  
+  if (!RESEND_API_KEY) {
+    healthStatus.warning = 'RESEND_API_KEY is not set';
+  }
+  
+  res.json(healthStatus);
 });
 
 // Import file upload routes (if separate file, otherwise keep everything in one file)
@@ -532,13 +534,15 @@ if (require.main === module) {
   const PORT = process.env.PORT || 3001;
   app.listen(PORT, () => {
     console.log(`Email API server running on port ${PORT}`);
-    console.log(`Gmail configured: ${GMAIL_CONFIG.email}`);
-    if (GMAIL_CONFIG.password) {
-      console.log(`Gmail password: ${GMAIL_CONFIG.password.length} characters (loaded from ${process.env.GMAIL_PASSWORD ? '.env' : 'default'})`);
+    console.log(`Email service: Resend`);
+    if (RESEND_API_KEY) {
+      console.log(`✅ Resend API key configured (${RESEND_API_KEY.substring(0, 10)}...)`);
     } else {
-      console.error('⚠️  WARNING: Gmail password not configured!');
-      console.error('   Create a .env file with GMAIL_PASSWORD=your-app-password');
+      console.error('⚠️  WARNING: RESEND_API_KEY is not set!');
+      console.error('   Set RESEND_API_KEY in Railway environment variables');
+      console.error('   Get your API key from: https://resend.com/api-keys');
     }
+    console.log(`From email: ${FROM_EMAIL}`);
   });
 }
 
