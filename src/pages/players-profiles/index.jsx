@@ -364,7 +364,7 @@ const PlayersProfilesPage = () => {
       return playerService.getFileUrl(playerPhotoDocument.file_path);
     }
     if (playerPhotoDocument?.file_url) {
-      return playerPhotoDocument.file_url;
+      return playerService.getFileUrl(playerPhotoDocument.file_url);
     }
     // Fallback to no_image.png if no photo exists
     return '/assets/images/no_image.png';

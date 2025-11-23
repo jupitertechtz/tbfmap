@@ -14,7 +14,7 @@ const OfficialPhotoUpload = ({ formData, onChange, errors, existingPhoto }) => {
     if (existingPhoto) {
       const url = existingPhoto?.file_path
         ? officialService.getFileUrl(existingPhoto.file_path)
-        : existingPhoto?.file_url || null;
+        : (existingPhoto?.file_url ? officialService.getFileUrl(existingPhoto.file_url) : null);
       return url && typeof url === 'string' ? url : null;
     }
     return null;
@@ -26,7 +26,7 @@ const OfficialPhotoUpload = ({ formData, onChange, errors, existingPhoto }) => {
     if (existingPhoto && !formData?.officialPhotoFile) {
       const photoUrl = existingPhoto?.file_path
         ? officialService.getFileUrl(existingPhoto.file_path)
-        : existingPhoto?.file_url || null;
+        : (existingPhoto?.file_url ? officialService.getFileUrl(existingPhoto.file_url) : null);
       if (photoUrl && typeof photoUrl === 'string') {
         setPreviewUrl(photoUrl);
       } else {

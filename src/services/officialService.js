@@ -1,20 +1,33 @@
 import { supabase } from '../lib/supabase';
 import { sendInvitationEmail } from './emailService';
 
-const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
+// Helper function to normalize old URLs (convert http://localhost:3001 to HTTPS API URL)
+const normalizeUrl = (url) => {
+  if (!url || typeof url !== 'string') return url;
+  
+  // If it's already a full URL, normalize it
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    // Replace old localhost:3001 URLs
+    if (url.includes('localhost:3001')) {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
+      return url.replace(/https?:\/\/localhost:3001/, apiUrl);
+    }
+    // Convert HTTP to HTTPS for security (mixed content prevention)
+    if (url.startsWith('http://') && !url.startsWith('http://localhost')) {
+      return url.replace(/^http:\/\//, 'https://');
+    }
+  }
+  
+  return url;
+};
 
 // Helper function to get file URL from file path
 const getFileUrlHelper = (filePath) => {
   if (!filePath) return null;
   try {
-    // If already a full URL, return as-is (already a full URL)
+    // If already a full URL, normalize it
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-      // Normalize old localhost URLs if present
-      if (filePath.includes('localhost:3001')) {
-        const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
-        return filePath.replace(/https?:\/\/localhost:3001/, apiUrl);
-      }
-      return filePath;
+      return normalizeUrl(filePath);
     }
     // Otherwise, get public URL from Supabase Storage
     const bucketName = 'official-documents';
@@ -34,9 +47,9 @@ const getOfficialPhotoUrl = (official) => {
   // First check userProfile avatarUrl
   if (official?.userProfile?.avatarUrl) {
     const avatarUrl = official.userProfile.avatarUrl;
-    // If already a full URL, use it directly
+    // Normalize URL (handles both full URLs and paths)
     if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
-      return avatarUrl;
+      return normalizeUrl(avatarUrl);
     }
     // Otherwise, convert relative path to full API URL
     const url = getFileUrlHelper(avatarUrl);
@@ -46,9 +59,9 @@ const getOfficialPhotoUrl = (official) => {
   // Fallback to photoUrl if available
   if (official?.photoUrl) {
     const photoUrl = official.photoUrl;
-    // If already a full URL, use it directly
+    // Normalize URL (handles both full URLs and paths)
     if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://')) {
-      return photoUrl;
+      return normalizeUrl(photoUrl);
     }
     // Otherwise, convert relative path to full API URL
     const url = getFileUrlHelper(photoUrl);
@@ -124,7 +137,7 @@ export const officialService = {
               fullName: official.user_profile.full_name,
               email: official.user_profile.email,
               phone: official.user_profile.phone,
-              avatarUrl: official.user_profile.avatar_url,
+              avatarUrl: normalizeUrl(official.user_profile.avatar_url),
               role: official.user_profile.role
             } : null
           };
@@ -203,7 +216,7 @@ export const officialService = {
           id: doc.id,
           documentType: doc.document_type,
           fileName: doc.file_name,
-          fileUrl: doc.file_url,
+          fileUrl: doc.file_url ? normalizeUrl(doc.file_url) : null,
           filePath: doc.file_path,
           fileSize: doc.file_size,
           description: doc.description,

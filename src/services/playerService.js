@@ -1,17 +1,32 @@
 import { supabase } from '../lib/supabase';
 
+// Helper function to normalize old URLs (convert http://localhost:3001 to HTTPS API URL)
+const normalizeUrl = (url) => {
+  if (!url || typeof url !== 'string') return url;
+  
+  // If it's already a full URL, normalize it
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    // Replace old localhost:3001 URLs
+    if (url.includes('localhost:3001')) {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
+      return url.replace(/https?:\/\/localhost:3001/, apiUrl);
+    }
+    // Convert HTTP to HTTPS for security (mixed content prevention)
+    if (url.startsWith('http://') && !url.startsWith('http://localhost')) {
+      return url.replace(/^http:\/\//, 'https://');
+    }
+  }
+  
+  return url;
+};
+
 // Helper function to get file URL (used before playerService is fully defined)
 const getFileUrlHelper = (filePath) => {
   if (!filePath) return null;
   try {
-    // If path already contains http:// or https://, return as-is (already a full URL)
+    // If path already contains http:// or https://, normalize it
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-      // Normalize old localhost URLs if present
-      if (filePath.includes('localhost:3001')) {
-        const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
-        return filePath.replace(/https?:\/\/localhost:3001/, apiUrl);
-      }
-      return filePath;
+      return normalizeUrl(filePath);
     }
     
     // Get public URL from Supabase Storage
@@ -57,10 +72,10 @@ export const playerService = {
         // Resolve photo URL with fallback logic (same as getPlayerPhotoUrl)
         let resolvedPhotoUrl = photoUrl;
         if (!resolvedPhotoUrl && photoDocument?.file_url) {
-          resolvedPhotoUrl = photoDocument.file_url;
+          resolvedPhotoUrl = normalizeUrl(photoDocument.file_url);
         }
         if (!resolvedPhotoUrl && player?.user_profile?.avatar_url) {
-          resolvedPhotoUrl = player.user_profile.avatar_url;
+          resolvedPhotoUrl = normalizeUrl(player.user_profile.avatar_url);
         }
         if (!resolvedPhotoUrl) {
           resolvedPhotoUrl = '/assets/images/no_image.png';
@@ -94,7 +109,7 @@ export const playerService = {
             fullName: player?.user_profile?.full_name,
             email: player?.user_profile?.email,
             phone: player?.user_profile?.phone,
-            avatarUrl: player?.user_profile?.avatar_url
+            avatarUrl: normalizeUrl(player?.user_profile?.avatar_url)
           } : null,
           team: player?.team ? {
             id: player?.team?.id,
@@ -527,10 +542,10 @@ export const playerService = {
         // Resolve photo URL with fallback logic (same as getPlayerPhotoUrl)
         let resolvedPhotoUrl = photoUrl;
         if (!resolvedPhotoUrl && photoDocument?.file_url) {
-          resolvedPhotoUrl = photoDocument.file_url;
+          resolvedPhotoUrl = normalizeUrl(photoDocument.file_url);
         }
         if (!resolvedPhotoUrl && player?.user_profile?.avatar_url) {
-          resolvedPhotoUrl = player.user_profile.avatar_url;
+          resolvedPhotoUrl = normalizeUrl(player.user_profile.avatar_url);
         }
         if (!resolvedPhotoUrl) {
           resolvedPhotoUrl = '/assets/images/no_image.png';
@@ -556,7 +571,7 @@ export const playerService = {
             fullName: player?.user_profile?.full_name,
             email: player?.user_profile?.email,
             phone: player?.user_profile?.phone,
-            avatarUrl: player?.user_profile?.avatar_url
+            avatarUrl: normalizeUrl(player?.user_profile?.avatar_url)
           } : null
         };
       }) || [];
@@ -766,14 +781,9 @@ export const playerService = {
   getFileUrl(filePath) {
     if (!filePath) return null;
     try {
-      // If path already contains http:// or https://, return as-is (already a full URL)
+      // If path already contains http:// or https://, normalize it
       if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-        // Normalize old localhost URLs if present
-        if (filePath.includes('localhost:3001')) {
-          const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
-          return filePath.replace(/https?:\/\/localhost:3001/, apiUrl);
-        }
-        return filePath;
+        return normalizeUrl(filePath);
       }
       
       // Get public URL from Supabase Storage
@@ -801,7 +811,7 @@ export const playerService = {
     
     // Fallback to photoUrl if available
     if (player?.photoUrl) {
-      return player.photoUrl;
+      return normalizeUrl(player.photoUrl);
     }
     
     // Fallback to userProfile avatarUrl if available

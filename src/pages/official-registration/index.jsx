@@ -75,7 +75,7 @@ const OfficialRegistration = () => {
     }
     
     if (document?.file_url && typeof document.file_url === 'string') {
-      return document.file_url;
+      return officialService.getFileUrl(document.file_url);
     }
     
     return '/assets/images/no_image.png';
@@ -89,7 +89,7 @@ const OfficialRegistration = () => {
       return officialService.getFileUrl(document.file_path);
     }
     
-    return document?.file_url || null;
+    return document?.file_url ? officialService.getFileUrl(document.file_url) : null;
   };
 
   // Handle file upload
