@@ -1,5 +1,25 @@
 import { supabase } from '../lib/supabase';
 
+// Helper function to normalize old URLs (convert http://localhost:3001 to HTTPS API URL)
+const normalizeUrl = (url) => {
+  if (!url || typeof url !== 'string') return url;
+  
+  // If it's already a full URL, normalize it
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    // Replace old localhost:3001 URLs
+    if (url.includes('localhost:3001')) {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
+      return url.replace(/https?:\/\/localhost:3001/, apiUrl);
+    }
+    // Convert HTTP to HTTPS for security (mixed content prevention)
+    if (url.startsWith('http://') && !url.startsWith('http://localhost')) {
+      return url.replace(/^http:\/\//, 'https://');
+    }
+  }
+  
+  return url;
+};
+
 const normalizeTeam = (team) => {
   if (!team) return null;
 
@@ -13,7 +33,7 @@ const normalizeTeam = (team) => {
     category: team?.category,
     division: team?.division,
     teamManagerId: team?.team_manager_id,
-    logoUrl: team?.logo_url,
+    logoUrl: normalizeUrl(team?.logo_url),
     primaryColor: team?.primary_color,
     secondaryColor: team?.secondary_color,
     teamStatus: team?.team_status,
@@ -352,7 +372,7 @@ export const teamService = {
           id: standing?.team?.id,
           name: standing?.team?.name,
           shortName: standing?.team?.short_name,
-          logoUrl: standing?.team?.logo_url,
+          logoUrl: normalizeUrl(standing?.team?.logo_url),
         } : null,
       })) || [];
     } catch (error) {
@@ -401,13 +421,13 @@ export const teamService = {
           id: match?.home_team?.id,
           name: match?.home_team?.name,
           shortName: match?.home_team?.short_name,
-          logoUrl: match?.home_team?.logo_url,
+          logoUrl: normalizeUrl(match?.home_team?.logo_url),
         } : null,
         awayTeam: match?.away_team ? {
           id: match?.away_team?.id,
           name: match?.away_team?.name,
           shortName: match?.away_team?.short_name,
-          logoUrl: match?.away_team?.logo_url,
+          logoUrl: normalizeUrl(match?.away_team?.logo_url),
         } : null,
         isHome: match?.home_team_id === teamId,
         opponent: match?.home_team_id === teamId 
@@ -571,14 +591,9 @@ export const teamService = {
   getFileUrl(filePath) {
     if (!filePath) return null;
     try {
-      // If path already contains http:// or https://, return as-is (already a full URL)
+      // If path already contains http:// or https://, normalize it
       if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-        // Normalize old localhost URLs if present
-        if (filePath.includes('localhost:3001')) {
-          const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
-          return filePath.replace(/https?:\/\/localhost:3001/, apiUrl);
-        }
-        return filePath;
+        return normalizeUrl(filePath);
       }
       
       // Get public URL from Supabase Storage

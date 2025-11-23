@@ -1364,7 +1364,7 @@ const TeamManagementPage = () => {
                           // file_url is the full URL (constructed from file_path or legacy URL)
                           const fileUrl = doc.file_path 
                             ? teamService.getFileUrl(doc.file_path)  // Generate URL from local path
-                            : doc.file_url || null;  // Fallback to stored URL (for backward compatibility)
+                            : (doc.file_url ? teamService.getFileUrl(doc.file_url) : null);  // Normalize stored URL (for backward compatibility)
                           const displayPath = doc.file_path ? doc.file_path : null;
                           
                           return (

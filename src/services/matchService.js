@@ -1,5 +1,25 @@
 import { supabase } from '../lib/supabase';
 
+// Helper function to normalize old URLs (convert http://localhost:3001 to HTTPS API URL)
+const normalizeUrl = (url) => {
+  if (!url || typeof url !== 'string') return url;
+  
+  // If it's already a full URL, normalize it
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    // Replace old localhost:3001 URLs
+    if (url.includes('localhost:3001')) {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
+      return url.replace(/https?:\/\/localhost:3001/, apiUrl);
+    }
+    // Convert HTTP to HTTPS for security (mixed content prevention)
+    if (url.startsWith('http://') && !url.startsWith('http://localhost')) {
+      return url.replace(/^http:\/\//, 'https://');
+    }
+  }
+  
+  return url;
+};
+
 export const matchService = {
   // Get all matches
   async getAll() {
@@ -47,13 +67,13 @@ export const matchService = {
           id: match?.home_team?.id,
           name: match?.home_team?.name,
           shortName: match?.home_team?.short_name,
-          logoUrl: match?.home_team?.logo_url
+          logoUrl: normalizeUrl(match?.home_team?.logo_url)
         } : null,
         awayTeam: match?.away_team ? {
           id: match?.away_team?.id,
           name: match?.away_team?.name,
           shortName: match?.away_team?.short_name,
-          logoUrl: match?.away_team?.logo_url
+          logoUrl: normalizeUrl(match?.away_team?.logo_url)
         } : null,
         referee: match?.referee ? {
           id: match?.referee?.id,
@@ -331,13 +351,13 @@ export const matchService = {
           id: match?.home_team?.id,
           name: match?.home_team?.name,
           shortName: match?.home_team?.short_name,
-          logoUrl: match?.home_team?.logo_url
+          logoUrl: normalizeUrl(match?.home_team?.logo_url)
         } : null,
         awayTeam: match?.away_team ? {
           id: match?.away_team?.id,
           name: match?.away_team?.name,
           shortName: match?.away_team?.short_name,
-          logoUrl: match?.away_team?.logo_url
+          logoUrl: normalizeUrl(match?.away_team?.logo_url)
         } : null
       })) || [];
     } catch (error) {
@@ -377,13 +397,13 @@ export const matchService = {
           id: match?.home_team?.id,
           name: match?.home_team?.name,
           shortName: match?.home_team?.short_name,
-          logoUrl: match?.home_team?.logo_url
+          logoUrl: normalizeUrl(match?.home_team?.logo_url)
         } : null,
         awayTeam: match?.away_team ? {
           id: match?.away_team?.id,
           name: match?.away_team?.name,
           shortName: match?.away_team?.short_name,
-          logoUrl: match?.away_team?.logo_url
+          logoUrl: normalizeUrl(match?.away_team?.logo_url)
         } : null
       })) || [];
     } catch (error) {
