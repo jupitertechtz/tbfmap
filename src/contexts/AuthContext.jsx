@@ -23,10 +23,27 @@ export const AuthProvider = ({ children }) => {
       if (!userId) return
       setProfileLoading(true)
       try {
-        const { data, error } = await supabase?.from('user_profiles')?.select('*')?.eq('id', userId)?.single()
-        if (!error) setUserProfile(data)
+        // Use maybeSingle() instead of single() to avoid 404 errors when profile doesn't exist
+        const { data, error } = await supabase?.from('user_profiles')?.select('*')?.eq('id', userId)?.maybeSingle()
+        
+        // Handle errors gracefully - only log if it's not a "not found" error
+        if (error) {
+          // PGRST116 is "no rows found" - this is expected for new users without profiles
+          if (error.code === 'PGRST116') {
+            // User exists but no profile yet - this is okay
+            setUserProfile(null)
+          } else {
+            // Other errors (permission, network, etc.) - log but don't break
+            console.error('Profile load error:', error)
+            setUserProfile(null)
+          }
+        } else {
+          setUserProfile(data)
+        }
       } catch (error) {
+        // Catch any unexpected errors
         console.error('Profile load error:', error)
+        setUserProfile(null)
       } finally {
         setProfileLoading(false)
       }
@@ -94,8 +111,8 @@ export const AuthProvider = ({ children }) => {
     if (!user) return { error: { message: 'No user logged in' } }
     
     try {
-      const { data, error } = await supabase?.from('user_profiles')?.update(updates)?.eq('id', user?.id)?.select()?.single()
-      if (!error) setUserProfile(data)
+      const { data, error } = await supabase?.from('user_profiles')?.update(updates)?.eq('id', user?.id)?.select()?.maybeSingle()
+      if (!error && data) setUserProfile(data)
       return { data, error }
     } catch (error) {
       return { error: { message: 'Network error. Please try again.' } }

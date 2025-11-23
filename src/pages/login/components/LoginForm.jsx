@@ -89,11 +89,17 @@ const LoginForm = () => {
             ?.from('user_profiles')
             ?.select('role')
             ?.eq('id', data?.user?.id)
-            ?.single();
+            ?.maybeSingle();
 
           if (profileError) {
             console.error('Error fetching user profile:', profileError);
             // Default to admin dashboard if profile fetch fails
+            navigate('/admin-dashboard', { replace: true });
+            return;
+          }
+
+          // If no profile exists, default to admin dashboard
+          if (!profileData) {
             navigate('/admin-dashboard', { replace: true });
             return;
           }

@@ -1088,5 +1088,74 @@ export const playerService = {
     } catch (error) {
       throw new Error(error?.message || 'Failed to register player');
     }
+  },
+
+  // Delete player and associated data
+  async delete(playerId) {
+    try {
+      const {
+        data: { user },
+      } = await supabase?.auth?.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Get player data first to get user_profile_id and documents
+      const { data: playerData, error: playerFetchError } = await supabase
+        ?.from('players')
+        ?.select('user_profile_id')
+        ?.eq('id', playerId)
+        ?.single();
+
+      if (playerFetchError) {
+        throw new Error('Player not found');
+      }
+
+      // Get all player documents to delete files
+      const { data: documents, error: docsError } = await supabase
+        ?.from('player_documents')
+        ?.select('file_path')
+        ?.eq('player_id', playerId);
+
+      if (!docsError && documents && documents.length > 0) {
+        // Delete all files from Supabase Storage
+        const filePaths = documents
+          .map(doc => doc.file_path)
+          .filter(path => path && !path.startsWith('http')); // Only storage paths
+
+        if (filePaths.length > 0) {
+          const bucketName = 'player-photos';
+          const { error: deleteError } = await supabase.storage
+            .from(bucketName)
+            .remove(filePaths);
+
+          if (deleteError) {
+            console.warn('Some files could not be deleted:', deleteError);
+            // Continue with deletion even if file deletion fails
+          }
+        }
+      }
+
+      // Delete player documents records
+      await supabase
+        ?.from('player_documents')
+        ?.delete()
+        ?.eq('player_id', playerId);
+
+      // Delete player record
+      const { error: deleteError } = await supabase
+        ?.from('players')
+        ?.delete()
+        ?.eq('id', playerId);
+
+      if (deleteError) {
+        throw new Error(deleteError.message || 'Failed to delete player');
+      }
+
+      // Note: We don't delete the user_profile or auth user
+      // as they might be used for other purposes or the user might want to keep their account
+
+      return { success: true };
+    } catch (error) {
+      throw new Error(error?.message || 'Failed to delete player');
+    }
   }
 };

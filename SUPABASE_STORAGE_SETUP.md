@@ -139,23 +139,93 @@ When a team manager uploads a logo:
 - Files require authentication to access
 - **Use this for sensitive documents**
 
-### RLS Policy Example (Optional)
+### RLS Policy Setup (REQUIRED if buckets are not public)
 
-If you want private buckets, you can add RLS policies in Supabase SQL Editor:
+**IMPORTANT**: If your buckets are NOT public, you MUST configure RLS policies or you'll get "new row violates row-level security policy" errors.
 
+#### Quick Setup (Recommended for Development)
+
+1. Go to **Supabase Dashboard** > **SQL Editor**
+2. Copy and paste the policies from `SUPABASE_STORAGE_RLS_POLICIES.sql`
+3. Run the SQL statements
+
+#### Manual Setup
+
+If you want to set up policies manually, use these for each bucket:
+
+**For player-photos bucket:**
 ```sql
--- Allow authenticated users to read files
+-- Allow authenticated users to upload player files
+CREATE POLICY "Authenticated users can upload player files"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'player-photos' AND
+  (storage.foldername(name))[1] = 'players'
+);
+
+-- Allow authenticated users to read player files
+CREATE POLICY "Authenticated users can read player files"
+ON storage.objects FOR SELECT
+TO authenticated
+USING (bucket_id = 'player-photos');
+```
+
+**For team-documents bucket:**
+```sql
+-- Allow authenticated users to upload team documents
+CREATE POLICY "Authenticated users can upload team documents"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'team-documents' AND
+  (storage.foldername(name))[1] = 'teams'
+);
+
+-- Allow authenticated users to read team documents
 CREATE POLICY "Authenticated users can read team documents"
 ON storage.objects FOR SELECT
 TO authenticated
 USING (bucket_id = 'team-documents');
+```
 
--- Allow authenticated users to upload files
-CREATE POLICY "Authenticated users can upload team documents"
+**For league-documents bucket:**
+```sql
+-- Allow authenticated users to upload league documents
+CREATE POLICY "Authenticated users can upload league documents"
 ON storage.objects FOR INSERT
 TO authenticated
-WITH CHECK (bucket_id = 'team-documents');
+WITH CHECK (
+  bucket_id = 'league-documents' AND
+  (storage.foldername(name))[1] = 'leagues'
+);
+
+-- Allow authenticated users to read league documents
+CREATE POLICY "Authenticated users can read league documents"
+ON storage.objects FOR SELECT
+TO authenticated
+USING (bucket_id = 'league-documents');
 ```
+
+**For official-documents bucket:**
+```sql
+-- Allow authenticated users to upload official documents
+CREATE POLICY "Authenticated users can upload official documents"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'official-documents' AND
+  (storage.foldername(name))[1] = 'officials'
+);
+
+-- Allow authenticated users to read official documents
+CREATE POLICY "Authenticated users can read official documents"
+ON storage.objects FOR SELECT
+TO authenticated
+USING (bucket_id = 'official-documents');
+```
+
+**See `SUPABASE_STORAGE_RLS_POLICIES.sql` for complete policy setup with role-based permissions.**
 
 ## Verification
 
@@ -199,12 +269,14 @@ After creating buckets, verify they exist:
 - Check you're in the correct Supabase project
 - Ensure bucket was created successfully
 
-### "Permission denied" Error
+### "Permission denied" or "new row violates row-level security policy" Error
 
 **Solution:**
-- If using public buckets: Ensure "Public bucket" is checked
-- If using private buckets: Configure RLS policies
-- Check user authentication status
+- If using public buckets: Ensure "Public bucket" is checked when creating the bucket
+- If using private buckets: **You MUST configure RLS policies** - see RLS Policy Setup section above
+- Run the SQL policies from `SUPABASE_STORAGE_RLS_POLICIES.sql` in Supabase SQL Editor
+- Check user authentication status - user must be logged in
+- Verify policies are active in Storage > Policies section
 
 ### Files Not Appearing
 

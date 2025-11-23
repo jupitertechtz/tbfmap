@@ -53,6 +53,14 @@ const PlayersProfilesPage = () => {
   const [selectedGender, setSelectedGender] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   
+  // View mode
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  
+  // Delete confirmation
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [playerToDelete, setPlayerToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   // Edit modal
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState(null);
@@ -683,6 +691,36 @@ const PlayersProfilesPage = () => {
     setIsSidebarCollapsed(prev => !prev);
   };
 
+  // Delete player handlers
+  const openDeleteModal = (player) => {
+    setPlayerToDelete(player);
+    setDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setPlayerToDelete(null);
+    setDeleteModalOpen(false);
+  };
+
+  const handleDeletePlayer = async () => {
+    if (!playerToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await playerService.delete(playerToDelete.id);
+      
+      // Reload players
+      await loadPlayers();
+      
+      setBanner({ type: 'success', message: 'Player deleted successfully.' });
+      closeDeleteModal();
+    } catch (error) {
+      setBanner({ type: 'error', message: error?.message || 'Failed to delete player.' });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -727,6 +765,29 @@ const PlayersProfilesPage = () => {
                 <p className="text-muted-foreground mt-1">
                   View and manage player information organized by team or gender.
                 </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* View Mode Toggle */}
+                <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                  <Button
+                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                    size="icon"
+                    onClick={() => setViewMode('grid')}
+                    className="h-8 w-8"
+                    title="Grid View"
+                  >
+                    <Icon name="LayoutGrid" size={16} />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'list' ? 'default' : 'ghost'}
+                    size="icon"
+                    onClick={() => setViewMode('list')}
+                    className="h-8 w-8"
+                    title="List View"
+                  >
+                    <Icon name="List" size={16} />
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -806,7 +867,8 @@ const PlayersProfilesPage = () => {
                 <Icon name="Users" size={48} className="text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground">No players found matching your filters.</p>
               </div>
-            ) : (
+            ) : viewMode === 'grid' ? (
+              // Grid View
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredPlayers.map((player) => {
                   const canEdit = canEditPlayer(player);
@@ -838,14 +900,26 @@ const PlayersProfilesPage = () => {
                               )}
                             </div>
                             {canEdit && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => openEditModal(player)}
-                                className="flex-shrink-0"
-                              >
-                                <Icon name="Edit" size={16} />
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openEditModal(player)}
+                                  className="flex-shrink-0 h-8 w-8"
+                                  title="Edit Player"
+                                >
+                                  <Icon name="Edit" size={16} />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openDeleteModal(player)}
+                                  className="flex-shrink-0 h-8 w-8 text-destructive hover:text-destructive"
+                                  title="Delete Player"
+                                >
+                                  <Icon name="Trash2" size={16} />
+                                </Button>
+                              </div>
                             )}
                           </div>
                           
@@ -891,6 +965,110 @@ const PlayersProfilesPage = () => {
                     </div>
                   );
                 })}
+              </div>
+            ) : (
+              // List View
+              <div className="bg-card border border-border rounded-lg card-shadow overflow-hidden">
+                <div className="divide-y divide-border">
+                  {filteredPlayers.map((player) => {
+                    const canEdit = canEditPlayer(player);
+                    const playerPhotoUrl = playerService.getPlayerPhotoUrl(player);
+                    
+                    return (
+                      <div
+                        key={player?.id}
+                        className="p-4 hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="flex-shrink-0">
+                            <Image
+                              src={playerPhotoUrl}
+                              alt={player?.userProfile?.fullName || 'Player'}
+                              className="w-12 h-12 rounded-full object-cover border-2 border-border"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
+                            <div className="md:col-span-2">
+                              <h3 className="font-semibold text-foreground truncate">
+                                {player?.userProfile?.fullName || 'Unknown Player'}
+                              </h3>
+                              <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                                {player?.jerseyNumber && (
+                                  <span>#{player.jerseyNumber}</span>
+                                )}
+                                {player?.playerPosition && (
+                                  <span className="flex items-center gap-1">
+                                    <Icon name="Target" size={12} />
+                                    {getPositionLabel(player.playerPosition)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {player?.team ? (
+                                <div className="flex items-center gap-1">
+                                  <Icon name="Users" size={14} />
+                                  <span className="truncate">{player.team.name}</span>
+                                </div>
+                              ) : (
+                                <span>-</span>
+                              )}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {(player?.heightCm || player?.weightKg) ? (
+                                <div className="flex items-center gap-1">
+                                  <Icon name="Ruler" size={14} />
+                                  <span>
+                                    {player.heightCm ? formatHeight(player.heightCm) : '-'}
+                                    {player.heightCm && player.weightKg ? ' • ' : ''}
+                                    {player.weightKg ? `${player.weightKg}kg` : ''}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span>-</span>
+                              )}
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                              {player?.playerStatus && (
+                                <span className={`px-2 py-0.5 rounded text-xs ${
+                                  player.playerStatus === 'active' 
+                                    ? 'bg-success/10 text-success'
+                                    : player.playerStatus === 'injured'
+                                    ? 'bg-warning/10 text-warning'
+                                    : 'bg-muted text-muted-foreground'
+                                }`}>
+                                  {player.playerStatus}
+                                </span>
+                              )}
+                              {canEdit && (
+                                <div className="flex items-center gap-1 ml-auto">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => openEditModal(player)}
+                                    className="h-8 w-8"
+                                    title="Edit Player"
+                                  >
+                                    <Icon name="Edit" size={16} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => openDeleteModal(player)}
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                    title="Delete Player"
+                                  >
+                                    <Icon name="Trash2" size={16} />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
@@ -1341,6 +1519,64 @@ const PlayersProfilesPage = () => {
                         </Button>
                       </div>
                     </form>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {deleteModalOpen && playerToDelete && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="bg-card border border-border rounded-lg max-w-md w-full card-shadow">
+                  <div className="p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="flex-shrink-0 w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                        <Icon name="AlertTriangle" size={24} className="text-destructive" />
+                      </div>
+                      <div className="flex-1">
+                        <h2 className="text-xl font-bold text-foreground">Delete Player</h2>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          This action cannot be undone.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="bg-muted/30 border border-border rounded-lg p-4 mb-6">
+                      <p className="text-sm text-foreground">
+                            Are you sure you want to delete{' '}
+                            <span className="font-semibold">
+                              {playerToDelete?.userProfile?.fullName || 'this player'}
+                            </span>
+                            ? This will permanently delete:
+                          </p>
+                          <ul className="list-disc list-inside mt-2 text-sm text-muted-foreground space-y-1">
+                            <li>Player profile and all associated data</li>
+                            <li>Player documents and photos</li>
+                            <li>All player records</li>
+                          </ul>
+                          <p className="text-xs text-warning mt-3 font-medium">
+                            Note: The user account will not be deleted.
+                          </p>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3">
+                      <Button
+                        variant="outline"
+                        onClick={closeDeleteModal}
+                        disabled={isDeleting}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleDeletePlayer}
+                        loading={isDeleting}
+                        iconName="Trash2"
+                        iconPosition="left"
+                      >
+                        {isDeleting ? 'Deleting...' : 'Delete Player'}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
