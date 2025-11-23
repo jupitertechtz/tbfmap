@@ -53,12 +53,16 @@ You need to create the following buckets in Supabase Storage:
 
 ## How to Create Buckets
 
+**Important:** You only need to create the buckets. The folder structure (`teams/{teamId}/logo/`, etc.) is automatically created by the code when files are uploaded.
+
 1. Go to your Supabase Dashboard
 2. Navigate to **Storage** in the left sidebar
 3. Click **New bucket** for each bucket
 4. Enter the bucket name (e.g., `team-documents`)
 5. **Make bucket public**: Check "Public bucket" (or configure RLS policies)
 6. Click **Create bucket**
+
+**See `SUPABASE_STORAGE_SETUP.md` for detailed step-by-step instructions.**
 
 ## File Validation
 

@@ -359,12 +359,22 @@ const PlayersProfilesPage = () => {
     }
   };
 
+  // Helper function to normalize URLs (e.g., replace localhost, ensure HTTPS)
+  const normalizeUrl = (url) => {
+    if (!url) return null;
+    let normalized = url.replace(/http:\/\/localhost:3001/g, 'https://api.tanzaniabasketball.com');
+    if (normalized.startsWith('http://')) {
+      normalized = normalized.replace('http://', 'https://');
+    }
+    return normalized;
+  };
+
   const getStoredPhotoUrl = () => {
     if (playerPhotoDocument?.file_path) {
       return playerService.getFileUrl(playerPhotoDocument.file_path);
     }
     if (playerPhotoDocument?.file_url) {
-      return playerService.getFileUrl(playerPhotoDocument.file_url);
+      return normalizeUrl(playerPhotoDocument.file_url); // Normalize existing file_url
     }
     // Fallback to no_image.png if no photo exists
     return '/assets/images/no_image.png';
@@ -480,7 +490,10 @@ const PlayersProfilesPage = () => {
     if (document?.file_path) {
       return playerService.getFileUrl(document.file_path);
     }
-    return document?.file_url || null;
+    if (document?.file_url) {
+      return normalizeUrl(document.file_url); // Normalize existing file_url
+    }
+    return null;
   };
 
   const validateEditForm = () => {

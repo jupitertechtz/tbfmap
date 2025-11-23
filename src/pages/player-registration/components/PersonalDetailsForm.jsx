@@ -1,6 +1,7 @@
 import React from 'react';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
+import DocumentUpload from './DocumentUpload';
 
 const PersonalDetailsForm = ({ formData, onChange, errors }) => {
   const nationalityOptions = [
@@ -187,6 +188,21 @@ const PersonalDetailsForm = ({ formData, onChange, errors }) => {
             onChange={(e) => onChange('postalCode', e?.target?.value)}
           />
         </div>
+      </div>
+
+      {/* ID Document Upload */}
+      <div className="space-y-4">
+        <DocumentUpload
+          label="National ID Document"
+          description="Upload a scanned copy of your national ID card or passport"
+          formData={formData}
+          fieldName="idDocumentFile"
+          onChange={onChange}
+          errors={errors}
+          acceptedTypes=".pdf,.jpg,.jpeg,.png"
+          maxSizeMB={10}
+          required={false}
+        />
       </div>
     </div>
   );

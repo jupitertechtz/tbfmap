@@ -2,6 +2,7 @@ import React from 'react';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import { Checkbox } from '../../../components/ui/Checkbox';
+import DocumentUpload from './DocumentUpload';
 
 const MedicalInformationForm = ({ formData, onChange, errors }) => {
   const bloodTypeOptions = [
@@ -220,6 +221,21 @@ const MedicalInformationForm = ({ formData, onChange, errors }) => {
             onChange={(e) => onChange('insurancePolicyNumber', e?.target?.value)}
           />
         </div>
+      </div>
+
+      {/* Medical Certificate Upload */}
+      <div className="space-y-4">
+        <DocumentUpload
+          label="Medical Certificate"
+          description="Upload a scanned copy of your medical clearance certificate"
+          formData={formData}
+          fieldName="medicalCertificateFile"
+          onChange={onChange}
+          errors={errors}
+          acceptedTypes=".pdf,.jpg,.jpeg,.png"
+          maxSizeMB={10}
+          required={false}
+        />
       </div>
     </div>
   );

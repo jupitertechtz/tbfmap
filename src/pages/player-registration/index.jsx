@@ -289,6 +289,9 @@ const PlayerRegistration = () => {
         professionalLevel: formData?.professionalLevel,
         // Photo
         playerPhotoFile: formData?.playerPhotoFile, // File object for upload
+        // Documents
+        idDocumentFile: formData?.idDocumentFile, // ID document file
+        medicalCertificateFile: formData?.medicalCertificateFile, // Medical certificate file
       };
 
       // Register player

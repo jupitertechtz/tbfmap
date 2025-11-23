@@ -903,26 +903,92 @@ export const playerService = {
       } = await supabase?.auth?.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // First, create or update user profile with personal details
-      const { data: profileData, error: profileError } = await supabase
+      // Check if player email is provided
+      if (!registrationData?.email) {
+        throw new Error('Player email is required for registration');
+      }
+
+      // Check if a user with this email already exists
+      const { data: existingProfile, error: checkError } = await supabase
         ?.from('user_profiles')
-        ?.upsert({
-          id: user?.id,
-          email: registrationData?.email || user?.email,
-          full_name: `${registrationData?.firstName || ''} ${registrationData?.lastName || ''}`.trim(),
-          phone: registrationData?.phoneNumber,
-          role: 'player',
-        }, {
-          onConflict: 'id'
-        })
-        ?.select()
+        ?.select('id, email, role')
+        ?.eq('email', registrationData.email)
         ?.single();
 
-      if (profileError) throw profileError;
+      let playerUserId;
 
-      // Create player record
+      if (existingProfile) {
+        // User already exists - use existing user ID
+        playerUserId = existingProfile.id;
+        
+        // Update the existing profile to ensure it has player role and correct details
+        const { error: updateError } = await supabase
+          ?.from('user_profiles')
+          ?.update({
+            full_name: `${registrationData?.firstName || ''} ${registrationData?.lastName || ''}`.trim(),
+            phone: registrationData?.phoneNumber,
+            role: 'player', // Ensure role is set to player
+          })
+          ?.eq('id', playerUserId);
+
+        if (updateError) {
+          console.warn('Failed to update existing user profile:', updateError);
+          // Continue anyway - the user exists
+        }
+      } else {
+        // Create new user account for the player via secure backend API
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
+        
+        // Generate a temporary password (player will need to reset it)
+        const tempPassword = `Temp${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}!`;
+        
+        const response = await fetch(`${apiUrl}/create-user`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: registrationData.email,
+            password: tempPassword,
+            fullName: `${registrationData?.firstName || ''} ${registrationData?.lastName || ''}`.trim(),
+            role: 'player',
+            phone: registrationData?.phoneNumber || null,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.message || 'Failed to create player user account');
+        }
+
+        const result = await response.json();
+        playerUserId = result?.user?.id;
+        
+        if (!playerUserId) {
+          throw new Error('Failed to retrieve newly created player user ID');
+        }
+
+        // Send invitation email with temporary password
+        try {
+          const { sendInvitationEmail } = await import('./emailService');
+          const loginUrl = `${window.location.origin}/login`;
+          await sendInvitationEmail({
+            to: registrationData.email,
+            fullName: `${registrationData?.firstName || ''} ${registrationData?.lastName || ''}`.trim(),
+            email: registrationData.email,
+            password: tempPassword,
+            role: 'player',
+            loginUrl,
+          });
+        } catch (emailError) {
+          console.warn('Failed to send invitation email:', emailError);
+          // Continue anyway - user is created
+        }
+      }
+
+      // Create player record linked to the player's user account (not the team manager's)
       const playerPayload = {
-        user_profile_id: user?.id,
+        user_profile_id: playerUserId,
         team_id: registrationData?.teamId || null,
         jersey_number: registrationData?.jerseyNumber ? parseInt(registrationData?.jerseyNumber) : null,
         player_position: registrationData?.primaryPosition || null,
@@ -957,11 +1023,11 @@ export const playerService = {
           photoUrl = photoUpload?.url;
           photoPath = photoUpload?.path;
           
-          // Update user profile with photo URL
+          // Update user profile with photo URL (use player's user ID, not team manager's)
           await supabase
             ?.from('user_profiles')
             ?.update({ avatar_url: photoUrl })
-            ?.eq('id', user?.id);
+            ?.eq('id', playerUserId);
           
           // Save photo as document record
           await this.savePlayerDocument(playerId, {
@@ -977,8 +1043,41 @@ export const playerService = {
         }
       }
 
-      // Upload and save other documents if provided
-      // This can be extended to handle ID documents, medical certificates, etc.
+      // Upload and save ID document if provided
+      if (registrationData?.idDocumentFile && typeof registrationData?.idDocumentFile === 'object') {
+        try {
+          const docUpload = await this.uploadFile(registrationData.idDocumentFile, playerId, 'document');
+          
+          await this.savePlayerDocument(playerId, {
+            documentType: 'id_document',
+            fileName: docUpload.fileName,
+            filePath: docUpload.path,
+            fileUrl: docUpload.url,
+            fileSize: docUpload.fileSize,
+          });
+        } catch (uploadError) {
+          console.warn('ID document upload failed:', uploadError?.message);
+          // Continue without document - player can be created without it
+        }
+      }
+
+      // Upload and save medical certificate if provided
+      if (registrationData?.medicalCertificateFile && typeof registrationData?.medicalCertificateFile === 'object') {
+        try {
+          const certUpload = await this.uploadFile(registrationData.medicalCertificateFile, playerId, 'document');
+          
+          await this.savePlayerDocument(playerId, {
+            documentType: 'medical_certificate',
+            fileName: certUpload.fileName,
+            filePath: certUpload.path,
+            fileUrl: certUpload.url,
+            fileSize: certUpload.fileSize,
+          });
+        } catch (uploadError) {
+          console.warn('Medical certificate upload failed:', uploadError?.message);
+          // Continue without document - player can be created without it
+        }
+      }
 
       return {
         id: playerId,
