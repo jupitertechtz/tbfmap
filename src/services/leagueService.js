@@ -307,41 +307,73 @@ export const leagueService = {
     }
   },
 
-  // Upload league document file
+  // Upload league document file to Supabase Storage
   async uploadFile(file, leagueId, fileType = 'document') {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 
-        'https://api.tanzaniabasketball.com';
-      
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('leagueId', leagueId);
-      formData.append('fileType', fileType);
+      const {
+        data: { user },
+      } = await supabase?.auth?.getUser();
+      if (!user) throw new Error('Not authenticated');
 
-      const response = await fetch(`${apiUrl}/upload-league-file`, {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Upload failed (${response.status}): ${errorData.error || 'Unknown error'}`);
+      if (!leagueId) {
+        throw new Error('League ID is required for file upload');
       }
 
-      const result = await response.json();
-      return result.file;
+      // Validate file type and size
+      const allowedMimes = [
+        'application/pdf',
+        'image/jpeg', 'image/jpg', 'image/png',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      ];
+      if (!allowedMimes.includes(file.type)) {
+        throw new Error('Document must be PDF, image, or Word document');
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('Document file size must be less than 10MB');
+      }
+
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 11);
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const ext = sanitizedName.split('.').pop();
+      const nameWithoutExt = sanitizedName.substring(0, sanitizedName.lastIndexOf('.')) || sanitizedName;
+      const filename = `${timestamp}-${randomStr}-${nameWithoutExt}.${ext}`;
+
+      // Construct file path: leagues/{leagueId}/documents/{filename}
+      const filePath = `leagues/${leagueId}/documents/${filename}`;
+
+      // Upload to Supabase Storage
+      const bucketName = 'league-documents';
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        if (uploadError.message?.includes('Bucket not found')) {
+          throw new Error('Storage bucket "league-documents" not found. Please create it in Supabase Storage.');
+        }
+        throw new Error(uploadError.message || 'Failed to upload file to storage');
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(filePath);
+
+      return {
+        filePath: filePath,
+        fileUrl: publicUrl,
+        fileName: file.name,
+        fileSize: file.size,
+      };
     } catch (error) {
       console.error('League file upload error:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        apiUrl: import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com',
-        leagueId,
-        fileType,
-        fileName: file?.name,
-        fileSize: file?.size
-      });
-      throw new Error(error.message || 'Failed to upload file');
+      throw new Error(error?.message || 'Failed to upload file');
     }
   },
 
@@ -461,18 +493,23 @@ export const leagueService = {
   getFileUrl(filePath) {
     if (!filePath) return null;
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
-      
-      // If path already contains http:// or https://, normalize old localhost URLs
+      // If path already contains http:// or https://, return as-is (already a full URL)
       if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-        // Replace old localhost:3001 URLs with new API URL
+        // Normalize old localhost URLs if present
         if (filePath.includes('localhost:3001')) {
+          const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
           return filePath.replace(/https?:\/\/localhost:3001/, apiUrl);
         }
         return filePath;
       }
       
-      return `${apiUrl}/files/${filePath}`;
+      // Get public URL from Supabase Storage
+      const bucketName = 'league-documents';
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(filePath);
+      
+      return publicUrl;
     } catch (error) {
       console.error('Error getting file URL:', error);
       return null;

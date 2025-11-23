@@ -7,16 +7,22 @@ const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.c
 const getFileUrlHelper = (filePath) => {
   if (!filePath) return null;
   try {
-    // If already a full URL, normalize old localhost URLs
+    // If already a full URL, return as-is (already a full URL)
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-      // Replace old localhost:3001 URLs with new API URL
+      // Normalize old localhost URLs if present
       if (filePath.includes('localhost:3001')) {
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
         return filePath.replace(/https?:\/\/localhost:3001/, apiUrl);
       }
       return filePath;
     }
-    // Otherwise, construct API URL
-    return `${apiUrl}/files/${filePath}`;
+    // Otherwise, get public URL from Supabase Storage
+    const bucketName = 'official-documents';
+    const { data: { publicUrl } } = supabase.storage
+      .from(bucketName)
+      .getPublicUrl(filePath);
+    
+    return publicUrl;
   } catch (error) {
     console.error('Error getting file URL:', error);
     return null;
@@ -222,54 +228,123 @@ export const officialService = {
     }
   },
 
-  // Upload official photo file
+  // Upload official photo file to Supabase Storage
   async uploadFile(file, officialId, fileType = 'photo') {
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('officialId', officialId);
-      formData.append('fileType', fileType);
+      const {
+        data: { user },
+      } = await supabase?.auth?.getUser();
+      if (!user) throw new Error('Not authenticated');
 
-      const response = await fetch(`${apiUrl}/upload-official-file`, {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Upload failed (${response.status}): ${errorData.error || 'Unknown error'}`);
+      if (!officialId) {
+        throw new Error('Official ID is required for file upload');
       }
 
-      const result = await response.json();
-      return result.file;
+      // Validate file type and size
+      if (fileType === 'photo') {
+        const allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedMimes.includes(file.type)) {
+          throw new Error('Photo must be an image file (JPEG, PNG, GIF, or WebP)');
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          throw new Error('Photo file size must be less than 5MB');
+        }
+      } else {
+        const allowedMimes = [
+          'application/pdf',
+          'image/jpeg', 'image/jpg', 'image/png',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ];
+        if (!allowedMimes.includes(file.type)) {
+          throw new Error('Document must be PDF, image, or Word document');
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error('Document file size must be less than 10MB');
+        }
+      }
+
+      // Generate unique filename
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 11);
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const ext = sanitizedName.split('.').pop();
+      const nameWithoutExt = sanitizedName.substring(0, sanitizedName.lastIndexOf('.')) || sanitizedName;
+      const filename = `${timestamp}-${randomStr}-${nameWithoutExt}.${ext}`;
+
+      // Construct file path: officials/{officialId}/photo/{filename} or officials/{officialId}/documents/{filename}
+      const folder = fileType === 'photo' ? 'photo' : 'documents';
+      const filePath = `officials/${officialId}/${folder}/${filename}`;
+
+      // Upload to Supabase Storage
+      const bucketName = 'official-documents';
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        if (uploadError.message?.includes('Bucket not found')) {
+          throw new Error('Storage bucket "official-documents" not found. Please create it in Supabase Storage.');
+        }
+        throw new Error(uploadError.message || 'Failed to upload file to storage');
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(filePath);
+
+      return {
+        filePath: filePath,
+        fileUrl: publicUrl,
+        fileName: file.name,
+        fileSize: file.size,
+      };
     } catch (error) {
       console.error('Official file upload error:', error);
-      throw new Error(error.message || 'Failed to upload file');
+      throw new Error(error?.message || 'Failed to upload file');
     }
   },
 
-  // Delete file from local storage
+  // Delete file from Supabase Storage
   async deleteFile(filePath) {
     try {
       if (!filePath) return;
 
-      const response = await fetch(`${apiUrl}/delete-file`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ filePath }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to delete file (${response.status})`);
+      // Extract path if it's a full URL
+      let storagePath = filePath;
+      if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+        // Extract path from Supabase Storage URL
+        const urlMatch = filePath.match(/\/storage\/v1\/object\/public\/[^/]+\/(.+)$/);
+        if (urlMatch) {
+          storagePath = urlMatch[1];
+        } else {
+          // If it's an old API URL, extract the path
+          const apiMatch = filePath.match(/\/files\/(.+)$/);
+          if (apiMatch) {
+            storagePath = apiMatch[1];
+          } else {
+            console.warn('Could not extract path from URL:', filePath);
+            return;
+          }
+        }
       }
 
-      return await response.json();
+      const bucketName = 'official-documents';
+      const { error } = await supabase.storage
+        .from(bucketName)
+        .remove([storagePath]);
+
+      if (error) {
+        console.error('Error deleting file from storage:', error);
+        // Don't throw - file might already be deleted
+      }
     } catch (error) {
       console.error('Error deleting file:', error);
-      throw new Error(error.message || 'Failed to delete file');
+      // Don't throw - file might already be deleted
     }
   },
 
