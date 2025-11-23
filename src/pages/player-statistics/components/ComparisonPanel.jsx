@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Image from '../../../components/AppImage';
+import { playerService } from '../../../services/playerService';
 
 const ComparisonPanel = ({ selectedPlayers, onRemovePlayer, onClearAll }) => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -119,7 +120,7 @@ const ComparisonPanel = ({ selectedPlayers, onRemovePlayer, onClearAll }) => {
             <div key={player?.id} className="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg">
               <div className="w-10 h-10 rounded-full overflow-hidden bg-muted">
                 <Image
-                  src={player?.photoUrl || player?.photo || '/assets/images/no_image.png'}
+                  src={playerService.getPlayerPhotoUrl(player) || '/assets/images/no_image.png'}
                   alt={player?.photoAlt || `Photo of ${player?.name || 'player'}`}
                   className="w-full h-full object-cover"
                 />

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Image from '../../../components/AppImage';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
+import { playerService } from '../../../services/playerService';
 
 const LeaderboardSection = ({ onPlayerSelect, players = [] }) => {
   const [activeCategory, setActiveCategory] = useState('points');
@@ -91,7 +92,7 @@ const LeaderboardSection = ({ onPlayerSelect, players = [] }) => {
           id: player?.id,
           rank: index + 1,
           name: player?.name || 'Unknown Player',
-          photo: player?.photoUrl || player?.photo || '/assets/images/no_image.png',
+          photo: playerService.getPlayerPhotoUrl(player) || '/assets/images/no_image.png',
           photoAlt: player?.photoAlt || `Photo of ${player?.name || 'player'}`,
           team: player?.team?.name || 'Unknown Team',
           value: value,
