@@ -707,6 +707,9 @@ export const playerService = {
         if (uploadError.message?.includes('Bucket not found')) {
           throw new Error('Storage bucket "player-photos" not found. Please create it in Supabase Storage.');
         }
+        if (uploadError.message?.includes('row-level security') || uploadError.message?.includes('RLS')) {
+          throw new Error('Permission denied: RLS policy error. Please configure RLS policies for the player-photos bucket. See QUICK_FIX_RLS_POLICIES.sql for the fix.');
+        }
         throw new Error(uploadError.message || 'Failed to upload file to storage');
       }
 
