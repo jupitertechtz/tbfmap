@@ -47,9 +47,19 @@ const PlayerRegistration = () => {
     // Clear localStorage if it's been more than 24 hours to prevent stale data
     const savedData = localStorage.getItem('playerRegistrationData');
     const savedProgress = localStorage.getItem('playerRegistrationProgress');
+    const registrationCompleted = localStorage.getItem('playerRegistrationCompleted');
     
+    // If a registration was just completed, clear everything and start fresh
+    if (registrationCompleted) {
+      localStorage.removeItem('playerRegistrationData');
+      localStorage.removeItem('playerRegistrationProgress');
+      localStorage.removeItem('playerRegistrationCompleted');
+      setFormData({});
+      setCurrentStep(0);
+      setCompletedSteps([]);
+    }
     // Check if saved data exists and is recent (within 24 hours)
-    if (savedData && savedProgress) {
+    else if (savedData && savedProgress) {
       try {
         const progress = JSON.parse(savedProgress);
         const savedTimestamp = progress?.timestamp;
@@ -57,18 +67,33 @@ const PlayerRegistration = () => {
         
         // Only load if saved within last 24 hours (86400000 ms)
         if (savedTimestamp && (now - savedTimestamp) < 86400000) {
-          setFormData(JSON.parse(savedData));
-          setCurrentStep(progress.currentStep || 0);
-          setCompletedSteps(progress.completedSteps || []);
+          const parsedData = JSON.parse(savedData);
+          // Only load if there's actual data (not empty object)
+          if (parsedData && Object.keys(parsedData).length > 0) {
+            setFormData(parsedData);
+            setCurrentStep(progress.currentStep || 0);
+            setCompletedSteps(progress.completedSteps || []);
+          } else {
+            // Empty data, start fresh
+            setFormData({});
+            setCurrentStep(0);
+            setCompletedSteps([]);
+          }
         } else {
           // Clear stale data
           localStorage.removeItem('playerRegistrationData');
           localStorage.removeItem('playerRegistrationProgress');
+          setFormData({});
+          setCurrentStep(0);
+          setCompletedSteps([]);
         }
       } catch (error) {
         // If parsing fails, clear the data
         localStorage.removeItem('playerRegistrationData');
         localStorage.removeItem('playerRegistrationProgress');
+        setFormData({});
+        setCurrentStep(0);
+        setCompletedSteps([]);
       }
     } else {
       // No saved data, start fresh
@@ -97,9 +122,15 @@ const PlayerRegistration = () => {
     fetchTeams();
   }, []);
 
-  // Save form data to localStorage whenever it changes
+  // Save form data to localStorage whenever it changes (but not if form is empty)
   useEffect(() => {
-    localStorage.setItem('playerRegistrationData', JSON.stringify(formData));
+    // Only save if formData has actual content (not empty object)
+    if (formData && Object.keys(formData).length > 0) {
+      localStorage.setItem('playerRegistrationData', JSON.stringify(formData));
+    } else {
+      // If form is empty, remove from localStorage
+      localStorage.removeItem('playerRegistrationData');
+    }
   }, [formData]);
 
   // Save progress to localStorage with timestamp
@@ -318,7 +349,8 @@ const PlayerRegistration = () => {
       // Register player
       const result = await playerService.registerPlayer(registrationData);
 
-      // Clear saved data and reset form state
+      // Mark registration as completed and clear all saved data
+      localStorage.setItem('playerRegistrationCompleted', 'true');
       localStorage.removeItem('playerRegistrationData');
       localStorage.removeItem('playerRegistrationProgress');
       setFormData({});
@@ -427,12 +459,13 @@ const PlayerRegistration = () => {
                 variant="outline"
                 onClick={() => {
                   // Clear form data when starting new registration
+                  localStorage.removeItem('playerRegistrationData');
+                  localStorage.removeItem('playerRegistrationProgress');
+                  localStorage.removeItem('playerRegistrationCompleted');
                   setFormData({});
                   setCurrentStep(0);
                   setCompletedSteps([]);
                   setErrors({});
-                  localStorage.removeItem('playerRegistrationData');
-                  localStorage.removeItem('playerRegistrationProgress');
                 }}
                 iconName="RefreshCw"
                 iconPosition="left"

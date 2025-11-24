@@ -512,6 +512,21 @@ const PlayersProfilesPage = () => {
   const validateEditForm = () => {
     const errors = {};
     
+    // Validate required fields
+    if (!editForm.fullName?.trim()) {
+      errors.fullName = 'Full name is required';
+    }
+    
+    if (!editForm.email?.trim()) {
+      errors.email = 'Email address is required';
+    } else if (!/\S+@\S+\.\S+/.test(editForm.email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+    
+    if (!editForm.phone?.trim()) {
+      errors.phone = 'Phone number is required';
+    }
+    
     if (editForm.jerseyNumber && (isNaN(editForm.jerseyNumber) || parseInt(editForm.jerseyNumber) < 0)) {
       errors.jerseyNumber = 'Jersey number must be a positive number';
     }
@@ -546,6 +561,11 @@ const PlayersProfilesPage = () => {
     setIsUpdating(true);
     try {
       const updateData = {
+        // User profile fields
+        fullName: editForm.fullName?.trim() || null,
+        email: editForm.email?.trim() || null,
+        phone: editForm.phone?.trim() || null,
+        // Player fields
         jerseyNumber: editForm.jerseyNumber ? parseInt(editForm.jerseyNumber) : null,
         playerPosition: editForm.playerPosition || null,
         playerStatus: editForm.playerStatus,
@@ -1139,24 +1159,24 @@ const PlayersProfilesPage = () => {
                             label="Full Name"
                             value={editForm.fullName}
                             onChange={(e) => handleEditFormChange('fullName', e.target.value)}
-                            disabled
-                            description="Name cannot be changed here"
+                            error={editErrors.fullName}
+                            required
                           />
                           <Input
                             label="Email Address"
                             type="email"
                             value={editForm.email}
                             onChange={(e) => handleEditFormChange('email', e.target.value)}
-                            disabled
-                            description="Email cannot be changed here"
+                            error={editErrors.email}
+                            required
                           />
                           <Input
                             label="Phone Number"
                             type="tel"
                             value={editForm.phone}
                             onChange={(e) => handleEditFormChange('phone', e.target.value)}
-                            disabled
-                            description="Phone cannot be changed here"
+                            error={editErrors.phone}
+                            required
                           />
                           <Input
                             label="Date of Birth"

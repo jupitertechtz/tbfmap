@@ -282,6 +282,33 @@ export const playerService = {
   // Update player
   async update(playerId, playerData) {
     try {
+      // First, get the player to find their user_profile_id
+      const { data: player, error: fetchError } = await supabase
+        ?.from('players')
+        ?.select('user_profile_id')
+        ?.eq('id', playerId)
+        ?.single();
+
+      if (fetchError) throw fetchError;
+      if (!player?.user_profile_id) throw new Error('Player user profile not found');
+
+      // Update user profile if name, email, or phone are provided
+      if (playerData.fullName !== undefined || playerData.email !== undefined || playerData.phone !== undefined) {
+        const profileUpdate = {};
+        if (playerData.fullName !== undefined) profileUpdate.full_name = playerData.fullName;
+        if (playerData.email !== undefined) profileUpdate.email = playerData.email;
+        if (playerData.phone !== undefined) profileUpdate.phone = playerData.phone;
+        profileUpdate.updated_at = new Date()?.toISOString();
+
+        const { error: profileError } = await supabase
+          ?.from('user_profiles')
+          ?.update(profileUpdate)
+          ?.eq('id', player.user_profile_id);
+
+        if (profileError) throw profileError;
+      }
+
+      // Update player record
       const { data, error } = await supabase?.from('players')?.update({
           team_id: playerData?.teamId,
           jersey_number: playerData?.jerseyNumber,
