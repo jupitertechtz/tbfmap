@@ -5,7 +5,7 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import { playerService } from '../../../services/playerService';
 
-const LeaderboardSection = ({ onPlayerSelect, players = [] }) => {
+const LeaderboardSection = ({ onPlayerSelect, onImageClick, onNameClick, players = [] }) => {
   const [activeCategory, setActiveCategory] = useState('points');
 
   const categories = [
@@ -180,7 +180,10 @@ const LeaderboardSection = ({ onPlayerSelect, players = [] }) => {
 
                 {/* Player Info */}
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 rounded-full overflow-hidden bg-muted">
+                  <div 
+                    className="w-12 h-12 rounded-full overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => onImageClick && onImageClick(player?.photo, player?.photoAlt || `Photo of ${player?.name}`)}
+                  >
                     <Image
                     src={player?.photo}
                     alt={player?.photoAlt}
@@ -188,12 +191,21 @@ const LeaderboardSection = ({ onPlayerSelect, players = [] }) => {
 
                   </div>
                   <div>
-                    <Link
-                    to={`/player-profile/${player?.id}`}
-                    className="text-sm font-semibold text-foreground hover:text-primary transition-colors">
+                    {onNameClick ? (
+                      <button
+                        onClick={() => onNameClick(player)}
+                        className="text-sm font-semibold text-foreground hover:text-primary transition-colors text-left"
+                      >
+                        {player?.name}
+                      </button>
+                    ) : (
+                      <Link
+                      to={`/player-profile/${player?.id}`}
+                      className="text-sm font-semibold text-foreground hover:text-primary transition-colors">
 
-                      {player?.name}
-                    </Link>
+                        {player?.name}
+                      </Link>
+                    )}
                     <p className="text-xs text-muted-foreground">{player?.team}</p>
                   </div>
                 </div>

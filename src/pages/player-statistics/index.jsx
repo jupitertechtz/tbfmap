@@ -9,11 +9,13 @@ import LeaderboardSection from './components/LeaderboardSection';
 import PerformanceChart from './components/PerformanceChart';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
+import Image from '../../components/AppImage';
 import { playerService } from '../../services/playerService';
 import { teamService } from '../../services/teamService';
 import { leagueService } from '../../services/leagueService';
 import { exportToCSV, exportToExcel, exportToPDF } from '../../utils/exportUtils';
 import { useAuth } from '../../contexts/AuthContext';
+import PlayerProfileModal from '../players-profiles/components/PlayerProfileModal';
 
 const PlayerStatistics = () => {
   const { isAuthenticated } = useAuth();
@@ -26,6 +28,13 @@ const PlayerStatistics = () => {
   const [sortBy, setSortBy] = useState('points');
   const [currentPage, setCurrentPage] = useState(1);
   const playersPerPage = 12;
+  
+  // Modal states
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImageAlt, setSelectedImageAlt] = useState('');
+  const [playerDetailsModalOpen, setPlayerDetailsModalOpen] = useState(false);
+  const [selectedPlayerForDetails, setSelectedPlayerForDetails] = useState(null);
   
   // Data states
   const [playersData, setPlayersData] = useState([]);
@@ -143,6 +152,64 @@ const PlayerStatistics = () => {
 
   const handlePlayerSelect = (player) => {
     setSelectedPlayerForChart(player);
+  };
+
+  const handleImageClick = (imageUrl, imageAlt) => {
+    setSelectedImage(imageUrl);
+    setSelectedImageAlt(imageAlt);
+    setImageModalOpen(true);
+  };
+
+  const handleNameClick = async (player) => {
+    // Convert player from statistics format to format expected by PlayerProfileModal
+    // The statistics page uses a different player structure, so we need to fetch full details
+    try {
+      // Try to get full player details by ID
+      const fullPlayerDetails = await playerService.getById(player.id);
+      setSelectedPlayerForDetails(fullPlayerDetails);
+    } catch (error) {
+      console.error('Failed to load full player details:', error);
+      // Fallback: Convert statistics player format to match PlayerProfileModal expected format
+      const convertedPlayer = {
+        id: player.id,
+        userProfileId: player.userProfileId,
+        teamId: player.teamId,
+        jerseyNumber: player.jerseyNumber,
+        playerPosition: player.playerPosition,
+        playerStatus: player.playerStatus,
+        heightCm: player.heightCm,
+        weightKg: player.weightKg,
+        dateOfBirth: player.dateOfBirth,
+        placeOfBirth: player.placeOfBirth,
+        nationality: player.nationality,
+        emergencyContactName: player.emergencyContactName,
+        emergencyContactPhone: player.emergencyContactPhone,
+        medicalConditions: player.medicalConditions,
+        userProfile: {
+          id: player.userProfileId,
+          fullName: player.name,
+          email: null,
+          phone: null,
+          avatarUrl: player.photo
+        },
+        team: player.team,
+        photoUrl: player.photo,
+        photoPath: player.photoPath
+      };
+      setSelectedPlayerForDetails(convertedPlayer);
+    }
+    setPlayerDetailsModalOpen(true);
+  };
+
+  const closeImageModal = () => {
+    setImageModalOpen(false);
+    setSelectedImage(null);
+    setSelectedImageAlt('');
+  };
+
+  const closePlayerDetailsModal = () => {
+    setPlayerDetailsModalOpen(false);
+    setSelectedPlayerForDetails(null);
   };
 
   const handleExport = async (format) => {
@@ -277,10 +344,12 @@ const PlayerStatistics = () => {
                     "grid grid-cols-1 lg:grid-cols-2 gap-6" : "space-y-4"
                   }>
                     {currentPlayers?.map((player) =>
-                      <div key={player?.id} onClick={() => handlePlayerSelect(player)}>
+                      <div key={player?.id}>
                         <PlayerStatsCard
                           player={player}
                           onCompare={handlePlayerCompare}
+                          onImageClick={handleImageClick}
+                          onNameClick={handleNameClick}
                           isSelected={selectedPlayers?.some((p) => p?.id === player?.id)} />
                       </div>
                     )}
@@ -341,17 +410,57 @@ const PlayerStatistics = () => {
               <div className="space-y-8">
                 <LeaderboardSection 
                   onPlayerSelect={handlePlayerSelect}
+                  onImageClick={handleImageClick}
+                  onNameClick={handleNameClick}
                   players={filteredPlayers} />
                 <ComparisonPanel
                   selectedPlayers={selectedPlayers}
                   onRemovePlayer={handleRemoveFromComparison}
-                  onClearAll={handleClearComparison} />
+                  onClearAll={handleClearComparison}
+                  onImageClick={handleImageClick}
+                  onNameClick={handleNameClick} />
 
               </div>
             </div>
           </div>
         </main>
       </div>
+
+      {/* Image Modal */}
+      {imageModalOpen && selectedImage && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={closeImageModal}
+        >
+          <div 
+            className="relative max-w-4xl max-h-[90vh] w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={closeImageModal}
+              className="absolute top-4 right-4 z-10 bg-black/50 hover:bg-black/70 text-white"
+            >
+              <Icon name="X" size={24} />
+            </Button>
+            <Image
+              src={selectedImage}
+              alt={selectedImageAlt}
+              className="w-full h-full object-contain rounded-lg"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Player Details Modal */}
+      {playerDetailsModalOpen && selectedPlayerForDetails && (
+        <PlayerProfileModal
+          player={selectedPlayerForDetails}
+          isOpen={playerDetailsModalOpen}
+          onClose={closePlayerDetailsModal}
+        />
+      )}
     </>);
 
 };

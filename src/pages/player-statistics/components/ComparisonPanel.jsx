@@ -4,7 +4,7 @@ import Button from '../../../components/ui/Button';
 import Image from '../../../components/AppImage';
 import { playerService } from '../../../services/playerService';
 
-const ComparisonPanel = ({ selectedPlayers, onRemovePlayer, onClearAll }) => {
+const ComparisonPanel = ({ selectedPlayers, onRemovePlayer, onClearAll, onImageClick, onNameClick }) => {
   const [activeTab, setActiveTab] = useState('overview');
 
   if (selectedPlayers?.length === 0) {
@@ -118,7 +118,13 @@ const ComparisonPanel = ({ selectedPlayers, onRemovePlayer, onClearAll }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {selectedPlayers?.map((player) => (
             <div key={player?.id} className="flex items-center space-x-3 p-3 bg-muted/50 rounded-lg">
-              <div className="w-10 h-10 rounded-full overflow-hidden bg-muted">
+              <div 
+                className="w-10 h-10 rounded-full overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => onImageClick && onImageClick(
+                  playerService.getPlayerPhotoUrl(player) || '/assets/images/no_image.png',
+                  player?.photoAlt || `Photo of ${player?.name || 'player'}`
+                )}
+              >
                 <Image
                   src={playerService.getPlayerPhotoUrl(player) || '/assets/images/no_image.png'}
                   alt={player?.photoAlt || `Photo of ${player?.name || 'player'}`}
@@ -126,7 +132,16 @@ const ComparisonPanel = ({ selectedPlayers, onRemovePlayer, onClearAll }) => {
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{player?.name}</p>
+                {onNameClick ? (
+                  <button
+                    onClick={() => onNameClick(player)}
+                    className="text-sm font-medium text-foreground truncate hover:text-primary transition-colors text-left w-full"
+                  >
+                    {player?.name}
+                  </button>
+                ) : (
+                  <p className="text-sm font-medium text-foreground truncate">{player?.name}</p>
+                )}
                 <p className="text-xs text-muted-foreground">{player?.team?.name || 'No Team'}</p>
               </div>
               <Button

@@ -4,7 +4,7 @@ import Image from '../../../components/AppImage';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 
-const PlayerStatsCard = ({ player, onCompare, isSelected }) => {
+const PlayerStatsCard = ({ player, onCompare, onImageClick, onNameClick, isSelected }) => {
   const {
     id,
     name,
@@ -30,7 +30,10 @@ const PlayerStatsCard = ({ player, onCompare, isSelected }) => {
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-4">
           <div className="relative">
-            <div className="w-16 h-16 rounded-full overflow-hidden bg-muted">
+            <div 
+              className="w-16 h-16 rounded-full overflow-hidden bg-muted cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => onImageClick && onImageClick(photo, photoAlt || `Photo of ${name}`)}
+            >
               <Image
                 src={photo}
                 alt={photoAlt}
@@ -43,12 +46,21 @@ const PlayerStatsCard = ({ player, onCompare, isSelected }) => {
           </div>
           
           <div>
-            <Link 
-              to={`/player-profile/${id}`}
-              className="text-lg font-semibold text-foreground hover:text-primary transition-colors"
-            >
-              {name}
-            </Link>
+            {onNameClick ? (
+              <button
+                onClick={() => onNameClick(player)}
+                className="text-lg font-semibold text-foreground hover:text-primary transition-colors text-left"
+              >
+                {name}
+              </button>
+            ) : (
+              <Link 
+                to={`/player-profile/${id}`}
+                className="text-lg font-semibold text-foreground hover:text-primary transition-colors"
+              >
+                {name}
+              </Link>
+            )}
             <p className="text-sm text-muted-foreground">{position} • {team?.name || 'No Team'}</p>
             <div className="flex items-center space-x-2 mt-1">
               {achievements?.map((achievement, index) => (
