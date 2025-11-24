@@ -43,18 +43,38 @@ const PlayerRegistration = () => {
   const totalSteps = stepLabels?.length;
 
   useEffect(() => {
-    // Load saved form data from localStorage
+    // Check if we should load saved data (only if user was in the middle of registration)
+    // Clear localStorage if it's been more than 24 hours to prevent stale data
     const savedData = localStorage.getItem('playerRegistrationData');
-    if (savedData) {
-      setFormData(JSON.parse(savedData));
-    }
-
-    // Load saved progress
     const savedProgress = localStorage.getItem('playerRegistrationProgress');
-    if (savedProgress) {
-      const { currentStep: savedStep, completedSteps: savedCompleted } = JSON.parse(savedProgress);
-      setCurrentStep(savedStep);
-      setCompletedSteps(savedCompleted);
+    
+    // Check if saved data exists and is recent (within 24 hours)
+    if (savedData && savedProgress) {
+      try {
+        const progress = JSON.parse(savedProgress);
+        const savedTimestamp = progress?.timestamp;
+        const now = Date.now();
+        
+        // Only load if saved within last 24 hours (86400000 ms)
+        if (savedTimestamp && (now - savedTimestamp) < 86400000) {
+          setFormData(JSON.parse(savedData));
+          setCurrentStep(progress.currentStep || 0);
+          setCompletedSteps(progress.completedSteps || []);
+        } else {
+          // Clear stale data
+          localStorage.removeItem('playerRegistrationData');
+          localStorage.removeItem('playerRegistrationProgress');
+        }
+      } catch (error) {
+        // If parsing fails, clear the data
+        localStorage.removeItem('playerRegistrationData');
+        localStorage.removeItem('playerRegistrationProgress');
+      }
+    } else {
+      // No saved data, start fresh
+      setFormData({});
+      setCurrentStep(0);
+      setCompletedSteps([]);
     }
 
     // Fetch teams
@@ -82,11 +102,12 @@ const PlayerRegistration = () => {
     localStorage.setItem('playerRegistrationData', JSON.stringify(formData));
   }, [formData]);
 
-  // Save progress to localStorage
+  // Save progress to localStorage with timestamp
   useEffect(() => {
     localStorage.setItem('playerRegistrationProgress', JSON.stringify({
       currentStep,
-      completedSteps
+      completedSteps,
+      timestamp: Date.now() // Add timestamp to track when data was saved
     }));
   }, [currentStep, completedSteps]);
 
@@ -297,9 +318,13 @@ const PlayerRegistration = () => {
       // Register player
       const result = await playerService.registerPlayer(registrationData);
 
-      // Clear saved data
+      // Clear saved data and reset form state
       localStorage.removeItem('playerRegistrationData');
       localStorage.removeItem('playerRegistrationProgress');
+      setFormData({});
+      setCurrentStep(0);
+      setCompletedSteps([]);
+      setErrors({});
 
       // Show success message and redirect
       alert('Player registration submitted successfully!');
@@ -398,6 +423,22 @@ const PlayerRegistration = () => {
             </div>
             
             <div className="flex items-center space-x-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  // Clear form data when starting new registration
+                  setFormData({});
+                  setCurrentStep(0);
+                  setCompletedSteps([]);
+                  setErrors({});
+                  localStorage.removeItem('playerRegistrationData');
+                  localStorage.removeItem('playerRegistrationProgress');
+                }}
+                iconName="RefreshCw"
+                iconPosition="left"
+              >
+                Start New Registration
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => navigate('/admin-dashboard')}

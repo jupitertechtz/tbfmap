@@ -241,9 +241,7 @@ const TeamRegistration = () => {
 
       case 6: // Documents
         sectionKey = 'documents';
-        if (!formData?.registrationCertificate) newErrors.registrationCertificate = 'Registration certificate is required';
-        if (!formData?.taxClearance) newErrors.taxClearance = 'Tax clearance is required';
-        if (!formData?.officialLetter) newErrors.officialLetter = 'Official letter is required';
+        // All supporting documents are optional; no validation errors here.
         break;
     }
 

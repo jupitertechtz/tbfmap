@@ -657,6 +657,11 @@ export const teamService = {
       } = await supabase?.auth?.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // Prepare logo placeholders so we can reference them before optional uploads
+      let logoUrl =
+        typeof registrationData?.teamLogo === 'string' ? registrationData?.teamLogo : null;
+      let logoPath = null;
+
       // Create team record first to get team ID for file organization
       const teamPayload = {
         name: registrationData?.teamName,
@@ -715,8 +720,6 @@ export const teamService = {
       const teamId = teamData?.id;
 
       // Upload logo if provided (now that we have team ID)
-      let logoUrl = null;
-      let logoPath = null;
       if (registrationData?.teamLogo && typeof registrationData?.teamLogo === 'object') {
         try {
           const logoUpload = await this.uploadFile(registrationData?.teamLogo, teamId, 'logo');
@@ -741,8 +744,6 @@ export const teamService = {
           console.warn('Logo upload failed:', uploadError?.message);
           // Continue without logo - team can be created without it
         }
-      } else if (typeof registrationData?.teamLogo === 'string') {
-        logoUrl = registrationData?.teamLogo;
       }
 
       // Upload and save documents (gracefully handle failures)

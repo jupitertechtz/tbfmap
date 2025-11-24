@@ -226,8 +226,8 @@ const MedicalInformationForm = ({ formData, onChange, errors }) => {
       {/* Medical Certificate Upload */}
       <div className="space-y-4">
         <DocumentUpload
-          label="Medical Certificate"
-          description="Upload a scanned copy of your medical clearance certificate"
+          label="Medical Certificate (Optional)"
+          description="Upload a scanned copy of your medical clearance certificate (optional)"
           formData={formData}
           fieldName="medicalCertificateFile"
           onChange={onChange}

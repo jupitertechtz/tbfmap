@@ -14,30 +14,30 @@ const DocumentUpload = ({ formData, handleFileUpload, errors }) => {
   const documentTypes = [
     {
       key: 'registrationCertificate',
-      label: 'Team Registration Certificate',
-      description: 'Official team registration document',
-      required: true,
+      label: 'Team Registration Certificate (Optional)',
+      description: 'Official team registration document (optional)',
+      required: false,
       acceptedFormats: '.pdf,.jpg,.jpeg,.png'
     },
     {
       key: 'taxClearance',
-      label: 'Tax Clearance Certificate',
-      description: 'Valid tax clearance from TRA',
-      required: true,
+      label: 'Tax Clearance Certificate (Optional)',
+      description: 'Valid tax clearance from TRA (optional)',
+      required: false,
       acceptedFormats: '.pdf,.jpg,.jpeg,.png'
     },
     {
       key: 'constitutionDocument',
-      label: 'Team Constitution',
-      description: 'Team constitution and bylaws',
+      label: 'Team Constitution (Optional)',
+      description: 'Team constitution and bylaws (optional)',
       required: false,
       acceptedFormats: '.pdf,.doc,.docx'
     },
     {
       key: 'officialLetter',
-      label: 'Official Letter of Intent',
-      description: 'Letter expressing intent to participate',
-      required: true,
+      label: 'Official Letter of Intent (Optional)',
+      description: 'Letter expressing intent to participate (optional)',
+      required: false,
       acceptedFormats: '.pdf,.doc,.docx'
     }
   ];
@@ -99,7 +99,7 @@ const DocumentUpload = ({ formData, handleFileUpload, errors }) => {
           </div>
           <div>
             <h3 className="text-lg font-semibold text-foreground">Document Upload</h3>
-            <p className="text-sm text-muted-foreground">Upload required team registration documents</p>
+            <p className="text-sm text-muted-foreground">Upload supporting team registration documents (optional)</p>
           </div>
         </div>
       </div>
@@ -108,10 +108,10 @@ const DocumentUpload = ({ formData, handleFileUpload, errors }) => {
         <div className="flex items-start space-x-2">
           <Icon name="AlertCircle" size={16} className="text-warning mt-0.5" />
           <div className="text-sm text-warning">
-            <p className="font-medium">Document Requirements</p>
+            <p className="font-medium">Document Guidelines</p>
             <p className="mt-1">
-              All documents must be clear, legible, and in valid formats. 
-              Maximum file size: 10MB per document.
+              Documents are optional but recommended to speed up verification. 
+              Ensure uploads are clear, legible, and under 10MB per document.
             </p>
           </div>
         </div>

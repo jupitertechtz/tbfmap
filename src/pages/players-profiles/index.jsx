@@ -12,6 +12,7 @@ import { teamService } from '../../services/teamService';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import Image from '../../components/AppImage';
+import PlayerProfileModal from './components/PlayerProfileModal';
 
 const positionOptions = [
   { label: 'Point Guard', value: 'point_guard' },
@@ -60,6 +61,10 @@ const PlayersProfilesPage = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [playerToDelete, setPlayerToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Player profile modal
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
   
   // Edit modal
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -721,6 +726,17 @@ const PlayersProfilesPage = () => {
     }
   };
 
+  // Player profile modal handlers
+  const openProfileModal = (player) => {
+    setSelectedPlayer(player);
+    setProfileModalOpen(true);
+  };
+
+  const closeProfileModal = () => {
+    setProfileModalOpen(false);
+    setSelectedPlayer(null);
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -880,7 +896,11 @@ const PlayersProfilesPage = () => {
                       className="bg-card border border-border rounded-lg p-4 card-shadow hover:shadow-lg transition-shadow"
                     >
                       <div className="flex items-start gap-4">
-                        <div className="flex-shrink-0">
+                        <div 
+                          className="flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => openProfileModal(player)}
+                          title="Click to view full profile"
+                        >
                           <Image
                             src={playerPhotoUrl}
                             alt={player?.userProfile?.fullName || 'Player'}
@@ -889,8 +909,12 @@ const PlayersProfilesPage = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
-                            <div>
-                              <h3 className="font-semibold text-foreground truncate">
+                            <div className="flex-1 min-w-0">
+                              <h3 
+                                className="font-semibold text-foreground truncate cursor-pointer hover:text-primary transition-colors"
+                                onClick={() => openProfileModal(player)}
+                                title="Click to view full profile"
+                              >
                                 {player?.userProfile?.fullName || 'Unknown Player'}
                               </h3>
                               {player?.jerseyNumber && (
@@ -980,7 +1004,11 @@ const PlayersProfilesPage = () => {
                         className="p-4 hover:bg-muted/30 transition-colors"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="flex-shrink-0">
+                          <div 
+                            className="flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+                            onClick={() => openProfileModal(player)}
+                            title="Click to view full profile"
+                          >
                             <Image
                               src={playerPhotoUrl}
                               alt={player?.userProfile?.fullName || 'Player'}
@@ -989,7 +1017,11 @@ const PlayersProfilesPage = () => {
                           </div>
                           <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
                             <div className="md:col-span-2">
-                              <h3 className="font-semibold text-foreground truncate">
+                              <h3 
+                                className="font-semibold text-foreground truncate cursor-pointer hover:text-primary transition-colors"
+                                onClick={() => openProfileModal(player)}
+                                title="Click to view full profile"
+                              >
                                 {player?.userProfile?.fullName || 'Unknown Player'}
                               </h3>
                               <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
@@ -1581,6 +1613,13 @@ const PlayersProfilesPage = () => {
                 </div>
               </div>
             )}
+
+            {/* Player Profile Modal */}
+            <PlayerProfileModal
+              player={selectedPlayer}
+              isOpen={profileModalOpen}
+              onClose={closeProfileModal}
+            />
           </div>
         </main>
       </div>

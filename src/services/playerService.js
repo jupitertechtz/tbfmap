@@ -971,7 +971,10 @@ export const playerService = {
           throw new Error('Failed to retrieve newly created player user ID');
         }
 
-        // Send invitation email with temporary password
+        // Note: Email invitation is disabled for player registrations
+        // Players will need to use password reset if they need to access their account
+        // If you need to enable emails, uncomment the code below:
+        /*
         try {
           const { sendInvitationEmail } = await import('./emailService');
           const loginUrl = `${window.location.origin}/login`;
@@ -987,6 +990,7 @@ export const playerService = {
           console.warn('Failed to send invitation email:', emailError);
           // Continue anyway - user is created
         }
+        */
       }
 
       // Create player record linked to the player's user account (not the team manager's)

@@ -193,8 +193,8 @@ const PersonalDetailsForm = ({ formData, onChange, errors }) => {
       {/* ID Document Upload */}
       <div className="space-y-4">
         <DocumentUpload
-          label="National ID Document"
-          description="Upload a scanned copy of your national ID card or passport"
+          label="National ID Document (Optional)"
+          description="Upload a scanned copy of your national ID card or passport (optional)"
           formData={formData}
           fieldName="idDocumentFile"
           onChange={onChange}
