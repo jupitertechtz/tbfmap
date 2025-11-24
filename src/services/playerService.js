@@ -300,12 +300,26 @@ export const playerService = {
         if (playerData.phone !== undefined) profileUpdate.phone = playerData.phone;
         profileUpdate.updated_at = new Date()?.toISOString();
 
-        const { error: profileError } = await supabase
+        const { data: updatedProfile, error: profileError } = await supabase
           ?.from('user_profiles')
           ?.update(profileUpdate)
-          ?.eq('id', player.user_profile_id);
+          ?.eq('id', player.user_profile_id)
+          ?.select()
+          ?.single();
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error('Error updating user profile:', profileError);
+          // Provide more specific error message
+          if (profileError.code === '42501') {
+            throw new Error('Permission denied: You do not have permission to update this user profile. Please ensure you are an admin or team manager.');
+          }
+          throw new Error(`Failed to update user profile: ${profileError.message || profileError.code || 'Unknown error'}`);
+        }
+
+        // Verify the update was successful
+        if (!updatedProfile) {
+          throw new Error('User profile update returned no data. The update may have been blocked by security policies.');
+        }
       }
 
       // Update player record
