@@ -1,6 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { sendInvitationEmail } from './emailService';
 
+const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
+
 // Helper function to normalize old URLs (convert http://localhost:3001 to HTTPS API URL)
 const normalizeUrl = (url) => {
   if (!url || typeof url !== 'string') return url;

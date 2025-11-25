@@ -12,6 +12,19 @@ import { useAuth } from '../../contexts/AuthContext';
 import AppImage from '../../components/AppImage';
 
 const OfficialRegistration = () => {
+  const generateLicenseNumber = (specialization) => {
+    if (!specialization) return '';
+    const now = new Date();
+    const year = now.getFullYear();
+    const prefixMap = {
+      'Referee': 'REF',
+      'Table Official': 'TOF',
+      'Commissioner': 'COM',
+    };
+    const specializationPrefix = prefixMap[specialization] || specialization?.substring(0, 3)?.toUpperCase() || 'OFF';
+    const randomSegment = Math.random().toString(36).substring(2, 6).toUpperCase();
+    return `TBF-${specializationPrefix}-${year}-${randomSegment}`;
+  };
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { userProfile } = useAuth();
@@ -29,6 +42,15 @@ const OfficialRegistration = () => {
     fullName: userProfile?.fullName || '',
     email: userProfile?.email || '',
     phone: userProfile?.phone || '',
+  useEffect(() => {
+    if (!isEditMode && formData.specialization) {
+      setFormData((prev) => ({
+        ...prev,
+        licenseNumber: generateLicenseNumber(formData.specialization),
+      }));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.specialization, isEditMode]);
     password: '',
     confirmPassword: '',
     
