@@ -246,6 +246,7 @@ export const teamService = {
         branch_code: teamData?.branchCode,
         swift_code: teamData?.swiftCode,
         team_manager_id: teamData?.teamManagerId !== undefined ? teamData?.teamManagerId : null,
+        registration_status: teamData?.registrationStatus || null,
         updated_at: new Date()?.toISOString(),
       };
 
