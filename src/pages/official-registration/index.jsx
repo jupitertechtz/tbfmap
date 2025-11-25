@@ -43,15 +43,6 @@ const OfficialRegistration = () => {
     fullName: userProfile?.fullName || '',
     email: userProfile?.email || '',
     phone: userProfile?.phone || '',
-  useEffect(() => {
-    if (!isEditMode && formData.specialization) {
-      setFormData((prev) => ({
-        ...prev,
-        licenseNumber: generateLicenseNumber(formData.specialization),
-      }));
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formData.specialization, isEditMode]);
     password: '',
     confirmPassword: '',
     
@@ -67,6 +58,16 @@ const OfficialRegistration = () => {
     // Passport (optional)
     passportFile: null
   });
+
+  useEffect(() => {
+    if (!isEditMode && formData.specialization) {
+      setFormData((prev) => ({
+        ...prev,
+        licenseNumber: generateLicenseNumber(formData.specialization),
+      }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.specialization, isEditMode]);
 
   useEffect(() => {
     if (!isEditMode && formData.specialization) {
