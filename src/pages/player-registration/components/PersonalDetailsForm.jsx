@@ -2,20 +2,9 @@ import React from 'react';
 import Input from '../../../components/ui/Input';
 import Select from '../../../components/ui/Select';
 import DocumentUpload from './DocumentUpload';
+import { nationalityOptions } from '../../../data/nationalities';
 
 const PersonalDetailsForm = ({ formData, onChange, errors }) => {
-  const nationalityOptions = [
-    { value: 'TZ', label: 'Tanzania' },
-    { value: 'KE', label: 'Kenya' },
-    { value: 'UG', label: 'Uganda' },
-    { value: 'RW', label: 'Rwanda' },
-    { value: 'BI', label: 'Burundi' },
-    { value: 'US', label: 'United States' },
-    { value: 'CA', label: 'Canada' },
-    { value: 'GB', label: 'United Kingdom' },
-    { value: 'AU', label: 'Australia' },
-    { value: 'ZA', label: 'South Africa' }
-  ];
 
   const genderOptions = [
     { value: 'male', label: 'Male' },
@@ -71,6 +60,15 @@ const PersonalDetailsForm = ({ formData, onChange, errors }) => {
         />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Input
+          label="Player License Number"
+          type="text"
+          value={formData?.playerLicenseNumber || ''}
+          readOnly
+          description="Automatically generated for each player"
+          required
+        />
+        
         <Select
           label="Gender"
           options={genderOptions}
@@ -87,6 +85,7 @@ const PersonalDetailsForm = ({ formData, onChange, errors }) => {
           onChange={(value) => onChange('nationality', value)}
           error={errors?.nationality}
           searchable
+          placeholder="Select nationality"
           required
         />
       </div>

@@ -73,6 +73,7 @@ const PlayersProfilesPage = () => {
     // Personal Information
     fullName: '',
     email: '',
+  playerLicenseNumber: '',
     phone: '',
     dateOfBirth: '',
     placeOfBirth: '',
@@ -224,12 +225,14 @@ const PlayersProfilesPage = () => {
         const jerseyNumber = player?.jerseyNumber?.toString() || '';
         const position = player?.playerPosition?.replace('_', ' ') || '';
         const teamName = player?.team?.name?.toLowerCase() || '';
+        const licenseNumber = player?.licenseNumber?.toLowerCase() || '';
         
         if (!fullName.includes(term) && 
             !email.includes(term) && 
             !jerseyNumber.includes(term) &&
             !position.includes(term) &&
-            !teamName.includes(term)) {
+            !teamName.includes(term) &&
+            !licenseNumber.includes(term)) {
           return false;
         }
       }
@@ -259,6 +262,7 @@ const PlayersProfilesPage = () => {
       // Personal Information
       fullName: player?.userProfile?.fullName || '',
       email: player?.userProfile?.email || '',
+      playerLicenseNumber: player?.licenseNumber || '',
       phone: player?.userProfile?.phone || '',
       dateOfBirth: player?.dateOfBirth || '',
       placeOfBirth: player?.placeOfBirth || '',
@@ -565,6 +569,7 @@ const PlayersProfilesPage = () => {
         fullName: editForm.fullName?.trim() || null,
         email: editForm.email?.trim() || null,
         phone: editForm.phone?.trim() || null,
+        licenseNumber: editForm.playerLicenseNumber || editingPlayer?.licenseNumber || null,
         // Player fields
         jerseyNumber: editForm.jerseyNumber ? parseInt(editForm.jerseyNumber) : null,
         playerPosition: editForm.playerPosition || null,
@@ -974,6 +979,12 @@ const PlayersProfilesPage = () => {
                                 <span className="truncate">{player.team.name}</span>
                               </div>
                             )}
+                            {player?.licenseNumber && (
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                <Icon name="Hash" size={14} />
+                                <span className="truncate">License: {player.licenseNumber}</span>
+                              </div>
+                            )}
                             {player?.playerPosition && (
                               <div className="flex items-center gap-2 text-muted-foreground">
                                 <Icon name="Target" size={14} />
@@ -1054,6 +1065,12 @@ const PlayersProfilesPage = () => {
                                     {getPositionLabel(player.playerPosition)}
                                   </span>
                                 )}
+                              {player?.licenseNumber && (
+                                <span className="flex items-center gap-1">
+                                  <Icon name="Hash" size={12} />
+                                  {player.licenseNumber}
+                                </span>
+                              )}
                               </div>
                             </div>
                             <div className="text-sm text-muted-foreground">
@@ -1177,6 +1194,13 @@ const PlayersProfilesPage = () => {
                             onChange={(e) => handleEditFormChange('phone', e.target.value)}
                             error={editErrors.phone}
                             required
+                          />
+                          <Input
+                            label="Player License Number"
+                            type="text"
+                            value={editForm.playerLicenseNumber}
+                            readOnly
+                            description="Automatically generated and cannot be edited"
                           />
                           <Input
                             label="Date of Birth"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import Header from '../../components/ui/Header';
 import Breadcrumb from '../../components/ui/Breadcrumb';
@@ -147,18 +147,6 @@ const TeamProfiles = () => {
     stats: { ppg: 11.8, rpg: 11.2, apg: 1.4 }
   }];
 
-
-  // Mock statistics data
-  const mockStatistics = {
-    fieldGoalPercentage: 47.3,
-    threePointPercentage: 35.8,
-    reboundsPerGame: 42.1,
-    assistsPerGame: 23.7,
-    offensiveRanking: 3,
-    defensiveRanking: 5,
-    reboundRanking: 2,
-    overallRanking: 2
-  };
 
   // Mock recent matches
   const mockMatches = [
@@ -330,16 +318,109 @@ const TeamProfiles = () => {
   const primaryStanding = standings?.find(s => s?.teamId === selectedTeam?.id) || standings?.[0];
 
   // Map standings to statistics format
-  const mappedStatistics = primaryStanding ? {
-    fieldGoalPercentage: 0, // TODO: Calculate from match data
-    threePointPercentage: 0, // TODO: Calculate from match data
-    reboundsPerGame: 0, // TODO: Calculate from match data
-    assistsPerGame: 0, // TODO: Calculate from match data
-    offensiveRanking: primaryStanding?.position || 0,
-    defensiveRanking: primaryStanding?.position || 0,
-    reboundRanking: primaryStanding?.position || 0,
-    overallRanking: primaryStanding?.position || 0
-  } : mockStatistics;
+  const formatShortDate = (value) => {
+    if (!value) return 'N/A';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'N/A';
+    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date);
+  };
+
+  const buildPerformanceTrend = (completedMatches = []) => {
+    if (!completedMatches?.length) return [];
+    const trendMap = new Map();
+    completedMatches.forEach((match) => {
+      if (!match?.scheduledDate) return;
+      const monthKey = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(new Date(match.scheduledDate));
+      const existing = trendMap.get(monthKey) || { month: monthKey, wins: 0, losses: 0 };
+      if (match?.result === 'Win') {
+        existing.wins += 1;
+      } else if (match?.result === 'Loss') {
+        existing.losses += 1;
+      }
+      trendMap.set(monthKey, existing);
+    });
+    return Array.from(trendMap.values()).slice(-6);
+  };
+
+  const buildScoringTrend = (completedMatches = []) => {
+    if (!completedMatches?.length) return [];
+    const recent = completedMatches.slice(0, 8).reverse();
+    return recent.map((match, index) => ({
+      game: match?.scheduledDate ? formatShortDate(match.scheduledDate) : `Game ${recent.length - index}`,
+      scored: match?.teamScore ?? 0,
+      allowed: match?.opponentScore ?? 0,
+    }));
+  };
+
+  const buildRecentMatchesSummary = (completedMatches = []) => {
+    if (!completedMatches?.length) return [];
+    return completedMatches.slice(0, 5).map((match) => ({
+      id: match?.id,
+      opponent: match?.opponent?.name || 'Unknown Team',
+      date: formatShortDate(match?.scheduledDate),
+      result: match?.result || 'N/A',
+      score: `${match?.teamScore ?? 0} - ${match?.opponentScore ?? 0}`,
+    }));
+  };
+
+  const mappedStatistics = useMemo(() => {
+    if (!selectedTeam) return null;
+
+    const completedMatches = (matches || []).filter(
+      (match) =>
+        match?.matchStatus === 'completed' &&
+        typeof match?.teamScore === 'number' &&
+        typeof match?.opponentScore === 'number'
+    );
+
+    const primary = primaryStanding;
+
+    if (!primary && completedMatches.length === 0) {
+      return null;
+    }
+
+    const gamesPlayedFromStandings = primary?.gamesPlayed;
+    const totalGames = gamesPlayedFromStandings ?? completedMatches.length;
+    const wins = primary?.wins ?? completedMatches.filter((match) => match?.result === 'Win').length;
+    const losses = primary?.losses ?? completedMatches.filter((match) => match?.result === 'Loss').length;
+    const pointsFor = primary?.pointsFor ?? completedMatches.reduce((sum, match) => sum + (match?.teamScore || 0), 0);
+    const pointsAgainst =
+      primary?.pointsAgainst ?? completedMatches.reduce((sum, match) => sum + (match?.opponentScore || 0), 0);
+    const pointDifference = primary?.pointDifference ?? pointsFor - pointsAgainst;
+    const winPercentage = totalGames ? Number(((wins / totalGames) * 100).toFixed(1)) : 0;
+    const pointsPerGame = totalGames ? Number((pointsFor / totalGames).toFixed(1)) : 0;
+    const pointsAllowedPerGame = totalGames ? Number((pointsAgainst / totalGames).toFixed(1)) : 0;
+
+    const performanceTrend = buildPerformanceTrend(completedMatches);
+    const scoringTrend = buildScoringTrend(completedMatches);
+    const recentMatchesSummary = buildRecentMatchesSummary(completedMatches);
+
+    const homeRecord = {
+      wins: completedMatches.filter((match) => match?.isHome && match?.result === 'Win').length,
+      losses: completedMatches.filter((match) => match?.isHome && match?.result === 'Loss').length,
+    };
+
+    const awayRecord = {
+      wins: completedMatches.filter((match) => !match?.isHome && match?.result === 'Win').length,
+      losses: completedMatches.filter((match) => !match?.isHome && match?.result === 'Loss').length,
+    };
+
+    return {
+      gamesPlayed: totalGames,
+      wins,
+      losses,
+      winPercentage,
+      pointsPerGame,
+      pointsAllowedPerGame,
+      pointDifference,
+      leaguePosition: primary?.position || null,
+      performanceTrend,
+      scoringTrend,
+      homeRecord,
+      awayRecord,
+      recentMatches: recentMatchesSummary,
+    };
+  }, [matches, primaryStanding, selectedTeam]);
 
   // Map team data to staff format for CoachingStaff component
   const mappedStaff = React.useMemo(() => {

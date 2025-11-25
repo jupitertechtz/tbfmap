@@ -18,12 +18,33 @@ import PlayerPhotoUpload from './components/PlayerPhotoUpload';
 import FormProgressIndicator from './components/FormProgressIndicator';
 import FormValidationSummary from './components/FormValidationSummary';
 
+const generatePlayerLicenseNumber = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const startOfYear = new Date(year, 0, 1);
+  const dayOfYear = String(Math.floor((now - startOfYear) / (1000 * 60 * 60 * 24)) + 1).padStart(3, '0');
+  const randomSegment = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `TBF-${year}${dayOfYear}-${randomSegment}`;
+};
+
+const createInitialFormData = () => ({
+  playerLicenseNumber: generatePlayerLicenseNumber(),
+});
+
+const ensureFormDataHasLicense = (data = {}) => {
+  if (data?.playerLicenseNumber) return data;
+  return {
+    ...data,
+    playerLicenseNumber: generatePlayerLicenseNumber(),
+  };
+};
+
 const PlayerRegistration = () => {
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState([]);
-  const [formData, setFormData] = useState({});
+  const [formData, setFormData] = useState(() => createInitialFormData());
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showValidationSummary, setShowValidationSummary] = useState(false);
@@ -54,12 +75,10 @@ const PlayerRegistration = () => {
       localStorage.removeItem('playerRegistrationData');
       localStorage.removeItem('playerRegistrationProgress');
       localStorage.removeItem('playerRegistrationCompleted');
-      setFormData({});
+      setFormData(createInitialFormData());
       setCurrentStep(0);
       setCompletedSteps([]);
-    }
-    // Check if saved data exists and is recent (within 24 hours)
-    else if (savedData && savedProgress) {
+    } else if (savedData && savedProgress) {
       try {
         const progress = JSON.parse(savedProgress);
         const savedTimestamp = progress?.timestamp;
@@ -70,12 +89,12 @@ const PlayerRegistration = () => {
           const parsedData = JSON.parse(savedData);
           // Only load if there's actual data (not empty object)
           if (parsedData && Object.keys(parsedData).length > 0) {
-            setFormData(parsedData);
+            setFormData(ensureFormDataHasLicense(parsedData));
             setCurrentStep(progress.currentStep || 0);
             setCompletedSteps(progress.completedSteps || []);
           } else {
             // Empty data, start fresh
-            setFormData({});
+            setFormData(createInitialFormData());
             setCurrentStep(0);
             setCompletedSteps([]);
           }
@@ -83,7 +102,7 @@ const PlayerRegistration = () => {
           // Clear stale data
           localStorage.removeItem('playerRegistrationData');
           localStorage.removeItem('playerRegistrationProgress');
-          setFormData({});
+          setFormData(createInitialFormData());
           setCurrentStep(0);
           setCompletedSteps([]);
         }
@@ -91,13 +110,13 @@ const PlayerRegistration = () => {
         // If parsing fails, clear the data
         localStorage.removeItem('playerRegistrationData');
         localStorage.removeItem('playerRegistrationProgress');
-        setFormData({});
+        setFormData(createInitialFormData());
         setCurrentStep(0);
         setCompletedSteps([]);
       }
     } else {
       // No saved data, start fresh
-      setFormData({});
+      setFormData(createInitialFormData());
       setCurrentStep(0);
       setCompletedSteps([]);
     }
@@ -310,6 +329,7 @@ const PlayerRegistration = () => {
         // Personal details
         firstName: formData?.firstName,
         lastName: formData?.lastName,
+        playerLicenseNumber: formData?.playerLicenseNumber,
         email: formData?.email,
         phoneNumber: formData?.phoneNumber,
         dateOfBirth: formData?.dateOfBirth,
@@ -353,7 +373,7 @@ const PlayerRegistration = () => {
       localStorage.setItem('playerRegistrationCompleted', 'true');
       localStorage.removeItem('playerRegistrationData');
       localStorage.removeItem('playerRegistrationProgress');
-      setFormData({});
+      setFormData(createInitialFormData());
       setCurrentStep(0);
       setCompletedSteps([]);
       setErrors({});
@@ -462,7 +482,7 @@ const PlayerRegistration = () => {
                   localStorage.removeItem('playerRegistrationData');
                   localStorage.removeItem('playerRegistrationProgress');
                   localStorage.removeItem('playerRegistrationCompleted');
-                  setFormData({});
+                  setFormData(createInitialFormData());
                   setCurrentStep(0);
                   setCompletedSteps([]);
                   setErrors({});

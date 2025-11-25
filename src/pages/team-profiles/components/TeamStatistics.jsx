@@ -1,56 +1,112 @@
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 import Icon from '../../../components/AppIcon';
 
 const TeamStatistics = ({ statistics }) => {
-  const performanceData = [
-    { month: 'Oct', wins: 4, losses: 2 },
-    { month: 'Nov', wins: 6, losses: 1 },
-    { month: 'Dec', wins: 3, losses: 3 },
-    { month: 'Jan', wins: 5, losses: 2 },
-    { month: 'Feb', wins: 4, losses: 3 },
-  ];
+  if (!statistics) {
+    return (
+      <div className="bg-card rounded-lg card-shadow p-6">
+        <h2 className="text-2xl font-bold text-foreground mb-4">Team Statistics</h2>
+        <p className="text-muted-foreground">No statistics available for this team yet. Play some games to generate insights!</p>
+      </div>
+    );
+  }
 
-  const scoringData = [
-    { game: 'Game 1', scored: 85, allowed: 78 },
-    { game: 'Game 2', scored: 92, allowed: 88 },
-    { game: 'Game 3', scored: 76, allowed: 82 },
-    { game: 'Game 4', scored: 89, allowed: 75 },
-    { game: 'Game 5', scored: 94, allowed: 87 },
-  ];
+  const {
+    gamesPlayed = 0,
+    wins = 0,
+    losses = 0,
+    winPercentage = 0,
+    pointsPerGame = 0,
+    pointsAllowedPerGame = 0,
+    pointDifference = 0,
+    leaguePosition = null,
+    performanceTrend = [],
+    scoringTrend = [],
+    homeRecord = { wins: 0, losses: 0 },
+    awayRecord = { wins: 0, losses: 0 },
+    recentMatches = [],
+  } = statistics;
 
-  const shotDistribution = [
-    { name: '2-Point', value: 45, color: '#1B5E20' },
-    { name: '3-Point', value: 35, color: '#0277BD' },
-    { name: 'Free Throw', value: 20, color: '#F57C00' },
-  ];
+  const performanceData = performanceTrend?.length
+    ? performanceTrend
+    : [{ month: 'N/A', wins: 0, losses: 0 }];
+
+  const scoringData = scoringTrend?.length
+    ? scoringTrend
+    : [{ game: 'N/A', scored: 0, allowed: 0 }];
+
+  const pieData = [
+    { name: 'Home Wins', value: homeRecord?.wins || 0, color: '#22c55e' },
+    { name: 'Home Losses', value: homeRecord?.losses || 0, color: '#15803d' },
+    { name: 'Away Wins', value: awayRecord?.wins || 0, color: '#0ea5e9' },
+    { name: 'Away Losses', value: awayRecord?.losses || 0, color: '#0369a1' },
+  ].filter((item) => item.value > 0);
+
+  if (!pieData.length) {
+    pieData.push({ name: 'No Games', value: 1, color: '#94a3b8' });
+  }
 
   return (
     <div className="bg-card rounded-lg card-shadow p-6 mb-6">
-      <h2 className="text-2xl font-bold text-foreground mb-6">Team Statistics</h2>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground">Team Statistics</h2>
+          {leaguePosition !== null && (
+            <p className="text-sm text-muted-foreground">Current league position: #{leaguePosition}</p>
+          )}
+        </div>
+        <div className="text-right">
+          <p className="text-4xl font-bold text-primary">{Number(winPercentage).toFixed(1)}%</p>
+          <p className="text-sm text-muted-foreground">Win Percentage</p>
+        </div>
+      </div>
+
       {/* Key Statistics Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-muted rounded-lg p-4 text-center">
-          <Icon name="Target" size={24} className="text-primary mx-auto mb-2" />
-          <p className="text-2xl font-bold text-foreground">{statistics?.fieldGoalPercentage}%</p>
-          <p className="text-sm text-muted-foreground">Field Goal %</p>
+          <Icon name="BarChart3" size={24} className="text-primary mx-auto mb-2" />
+          <p className="text-2xl font-bold text-foreground">{gamesPlayed}</p>
+          <p className="text-sm text-muted-foreground">Games Played</p>
         </div>
         <div className="bg-muted rounded-lg p-4 text-center">
-          <Icon name="Zap" size={24} className="text-accent mx-auto mb-2" />
-          <p className="text-2xl font-bold text-foreground">{statistics?.threePointPercentage}%</p>
-          <p className="text-sm text-muted-foreground">3-Point %</p>
+          <Icon name="CheckCircle" size={24} className="text-success mx-auto mb-2" />
+          <p className="text-2xl font-bold text-foreground">{wins}-{losses}</p>
+          <p className="text-sm text-muted-foreground">Record</p>
         </div>
         <div className="bg-muted rounded-lg p-4 text-center">
-          <Icon name="RotateCcw" size={24} className="text-success mx-auto mb-2" />
-          <p className="text-2xl font-bold text-foreground">{statistics?.reboundsPerGame}</p>
-          <p className="text-sm text-muted-foreground">Rebounds/Game</p>
+          <Icon name="TrendingUp" size={24} className="text-accent mx-auto mb-2" />
+          <p className="text-2xl font-bold text-foreground">{pointsPerGame}</p>
+          <p className="text-sm text-muted-foreground">Points per Game</p>
         </div>
         <div className="bg-muted rounded-lg p-4 text-center">
-          <Icon name="Users" size={24} className="text-secondary mx-auto mb-2" />
-          <p className="text-2xl font-bold text-foreground">{statistics?.assistsPerGame}</p>
-          <p className="text-sm text-muted-foreground">Assists/Game</p>
+          <Icon name="Shield" size={24} className="text-secondary mx-auto mb-2" />
+          <p className="text-2xl font-bold text-foreground">{pointsAllowedPerGame}</p>
+          <p className="text-sm text-muted-foreground">Points Allowed</p>
         </div>
       </div>
+
+      <div className="bg-muted rounded-lg p-4 mb-8">
+        <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Point Differential</h3>
+        <p className={`text-3xl font-bold ${pointDifference >= 0 ? 'text-success' : 'text-destructive'}`}>
+          {pointDifference >= 0 ? '+' : ''}
+          {pointDifference}
+        </p>
+      </div>
+
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* Win/Loss Trend */}
@@ -61,13 +117,13 @@ const TeamStatistics = ({ statistics }) => {
               <BarChart data={performanceData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis dataKey="month" stroke="var(--color-muted-foreground)" />
-                <YAxis stroke="var(--color-muted-foreground)" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'var(--color-popover)', 
+                <YAxis stroke="var(--color-muted-foreground)" allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-popover)',
                     border: '1px solid var(--color-border)',
-                    borderRadius: '6px'
-                  }} 
+                    borderRadius: '6px',
+                  }}
                 />
                 <Bar dataKey="wins" fill="var(--color-success)" name="Wins" />
                 <Bar dataKey="losses" fill="var(--color-error)" name="Losses" />
@@ -84,13 +140,13 @@ const TeamStatistics = ({ statistics }) => {
               <LineChart data={scoringData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis dataKey="game" stroke="var(--color-muted-foreground)" />
-                <YAxis stroke="var(--color-muted-foreground)" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'var(--color-popover)', 
+                <YAxis stroke="var(--color-muted-foreground)" allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-popover)',
                     border: '1px solid var(--color-border)',
-                    borderRadius: '6px'
-                  }} 
+                    borderRadius: '6px',
+                  }}
                 />
                 <Line type="monotone" dataKey="scored" stroke="var(--color-primary)" strokeWidth={2} name="Points Scored" />
                 <Line type="monotone" dataKey="allowed" stroke="var(--color-error)" strokeWidth={2} name="Points Allowed" />
@@ -99,23 +155,24 @@ const TeamStatistics = ({ statistics }) => {
           </div>
         </div>
       </div>
-      {/* Shot Distribution */}
+
+      {/* Home / Away Distribution */}
       <div className="bg-muted rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Shot Distribution</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-4">Home vs Away Results</h3>
         <div className="flex flex-col lg:flex-row lg:items-center lg:space-x-8">
           <div className="w-full lg:w-1/2 h-64">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={shotDistribution}
+                  data={pieData}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
                   outerRadius={100}
-                  paddingAngle={5}
+                  paddingAngle={3}
                   dataKey="value"
                 >
-                  {shotDistribution?.map((entry, index) => (
+                  {pieData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry?.color} />
                   ))}
                 </Pie>
@@ -124,45 +181,44 @@ const TeamStatistics = ({ statistics }) => {
             </ResponsiveContainer>
           </div>
           <div className="flex-1 space-y-3">
-            {shotDistribution?.map((item, index) => (
+            {pieData.map((item, index) => (
               <div key={index} className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div 
-                    className="w-4 h-4 rounded-full"
-                    style={{ backgroundColor: item?.color }}
-                  />
+                  <div className="w-4 h-4 rounded-full" style={{ backgroundColor: item?.color }} />
                   <span className="text-foreground font-medium">{item?.name}</span>
                 </div>
-                <span className="text-foreground font-bold">{item?.value}%</span>
+                <span className="text-foreground font-bold">{item?.value}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
-      {/* League Rankings */}
-      <div className="mt-6 bg-muted rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-foreground mb-4">League Rankings</h3>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="text-center">
-            <p className="text-3xl font-bold text-primary">#{statistics?.offensiveRanking}</p>
-            <p className="text-sm text-muted-foreground">Offensive Ranking</p>
-          </div>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-success">#{statistics?.defensiveRanking}</p>
-            <p className="text-sm text-muted-foreground">Defensive Ranking</p>
-          </div>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-accent">#{statistics?.reboundRanking}</p>
-            <p className="text-sm text-muted-foreground">Rebound Ranking</p>
-          </div>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-secondary">#{statistics?.overallRanking}</p>
-            <p className="text-sm text-muted-foreground">Overall Ranking</p>
+
+      {/* Recent Results */}
+      {recentMatches?.length > 0 && (
+        <div className="mt-6 bg-muted rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-foreground mb-4">Recent Results</h3>
+          <div className="space-y-3">
+            {recentMatches.map((match) => (
+              <div key={match?.id || match?.date} className="flex items-center justify-between text-sm">
+                <div className="flex items-center space-x-3">
+                  <Icon
+                    name={match?.result === 'Win' ? 'CheckCircle' : 'XCircle'}
+                    size={16}
+                    className={match?.result === 'Win' ? 'text-success' : 'text-destructive'}
+                  />
+                  <span className="text-foreground font-medium">{match?.date}</span>
+                  <span className="text-muted-foreground">{match?.opponent}</span>
+                </div>
+                <div className="font-semibold text-foreground">{match?.score}</div>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
+export default TeamStatistics;
 export default TeamStatistics;

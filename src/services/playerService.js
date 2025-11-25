@@ -42,6 +42,15 @@ const getFileUrlHelper = (filePath) => {
   }
 };
 
+const generatePlayerLicenseNumber = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const startOfYear = new Date(year, 0, 1);
+  const dayOfYear = String(Math.floor((now - startOfYear) / (1000 * 60 * 60 * 24)) + 1).padStart(3, '0');
+  const randomSegment = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `TBF-${year}${dayOfYear}-${randomSegment}`;
+};
+
 export const playerService = {
   // Get all players
   async getAll() {
@@ -84,6 +93,7 @@ export const playerService = {
         return {
           id: player?.id,
           userProfileId: player?.user_profile_id,
+          licenseNumber: player?.license_number || null,
           teamId: player?.team_id,
           jerseyNumber: player?.jersey_number,
           playerPosition: player?.player_position,
@@ -165,6 +175,7 @@ export const playerService = {
       return {
         id: data?.id,
         userProfileId: data?.user_profile_id,
+        licenseNumber: data?.license_number || null,
         teamId: data?.team_id,
         jerseyNumber: data?.jersey_number,
         playerPosition: data?.player_position,
@@ -257,6 +268,7 @@ export const playerService = {
       return {
         id: data?.id,
         userProfileId: data?.user_profile_id,
+        licenseNumber: data?.license_number || null,
         teamId: data?.team_id,
         jerseyNumber: data?.jersey_number,
         playerPosition: data?.player_position,
@@ -325,6 +337,7 @@ export const playerService = {
       // Update player record
       const { data, error } = await supabase?.from('players')?.update({
           team_id: playerData?.teamId,
+          license_number: playerData?.licenseNumber,
           jersey_number: playerData?.jerseyNumber,
           player_position: playerData?.playerPosition,
           height_cm: playerData?.heightCm,
@@ -522,6 +535,7 @@ export const playerService = {
         return {
           id: player?.id,
           userProfileId: player?.user_profile_id,
+          licenseNumber: player?.license_number || null,
           teamId: player?.team_id,
           jerseyNumber: player?.jersey_number,
           playerPosition: player?.player_position,
@@ -1034,9 +1048,12 @@ export const playerService = {
         */
       }
 
+      const playerLicenseNumber = registrationData?.playerLicenseNumber || generatePlayerLicenseNumber();
+
       // Create player record linked to the player's user account (not the team manager's)
       const playerPayload = {
         user_profile_id: playerUserId,
+        license_number: playerLicenseNumber,
         team_id: registrationData?.teamId || null,
         jersey_number: registrationData?.jerseyNumber ? parseInt(registrationData?.jerseyNumber) : null,
         player_position: registrationData?.primaryPosition || null,
