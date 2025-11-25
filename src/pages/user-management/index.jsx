@@ -47,6 +47,17 @@ const UserManagementPage = () => {
   const [activeFilters, setActiveFilters] = useState(initialFilters);
   const [updatingUserIds, setUpdatingUserIds] = useState(new Set());
   const [refreshToken, setRefreshToken] = useState(0);
+  const [editUserModalOpen, setEditUserModalOpen] = useState(false);
+  const [userBeingEdited, setUserBeingEdited] = useState(null);
+  const [editUserForm, setEditUserForm] = useState({
+    fullName: '',
+    phone: '',
+    role: '',
+  });
+  const [editUserErrors, setEditUserErrors] = useState({});
+  const [isSavingUser, setIsSavingUser] = useState(false);
+  const [deleteUserTarget, setDeleteUserTarget] = useState(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   // Check if user is admin
   const isAdmin = userProfile?.role === 'admin';
@@ -228,6 +239,111 @@ const UserManagementPage = () => {
         next.delete(user?.id);
         return next;
       });
+    }
+  };
+
+  const openEditUserModal = (user) => {
+    if (!user) return;
+    setUserBeingEdited(user);
+    setEditUserForm({
+      fullName: user?.fullName || '',
+      phone: user?.phone || '',
+      role: user?.role || '',
+    });
+    setEditUserErrors({});
+    setEditUserModalOpen(true);
+  };
+
+  const closeEditUserModal = () => {
+    setEditUserModalOpen(false);
+    setUserBeingEdited(null);
+    setEditUserErrors({});
+  };
+
+  const handleEditUserChange = (field, value) => {
+    setEditUserForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+    if (editUserErrors?.[field]) {
+      setEditUserErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  const validateEditUserForm = () => {
+    const errors = {};
+    if (!editUserForm?.fullName?.trim()) {
+      errors.fullName = 'Full name is required.';
+    }
+    if (!editUserForm?.role) {
+      errors.role = 'Select a role.';
+    }
+    setEditUserErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleUpdateUserProfile = async (event) => {
+    event?.preventDefault();
+    if (!userBeingEdited?.id) return;
+    if (!validateEditUserForm()) return;
+
+    setIsSavingUser(true);
+    setEditUserErrors({});
+
+    try {
+      const updatedUser = await userService.updateUserProfile(userBeingEdited.id, {
+        fullName: editUserForm?.fullName?.trim(),
+        phone: editUserForm?.phone?.trim() || null,
+        role: editUserForm?.role,
+      });
+
+      setUsers((prev) =>
+        prev?.map((user) => (user?.id === updatedUser?.id ? updatedUser : user))
+      );
+      setBanner({ type: 'success', message: 'User updated successfully.' });
+      closeEditUserModal();
+    } catch (error) {
+      const message = error?.message || 'Failed to update user. Please try again.';
+      setEditUserErrors((prev) => ({ ...prev, submit: message }));
+    } finally {
+      setIsSavingUser(false);
+    }
+  };
+
+  const openDeleteUserModal = (user) => {
+    setDeleteUserTarget(user);
+  };
+
+  const closeDeleteUserModal = () => {
+    setDeleteUserTarget(null);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deleteUserTarget?.id) return;
+    if (deleteUserTarget?.id === userProfile?.id) {
+      setBanner({
+        type: 'error',
+        message: 'You cannot delete your own account.',
+      });
+      return;
+    }
+
+    setIsDeletingUser(true);
+    try {
+      await userService.deleteUser(deleteUserTarget.id);
+      setUsers((prev) => prev.filter((user) => user?.id !== deleteUserTarget.id));
+      setBanner({
+        type: 'success',
+        message: `User ${deleteUserTarget?.fullName || ''} deleted successfully.`,
+      });
+      closeDeleteUserModal();
+    } catch (error) {
+      setBanner({
+        type: 'error',
+        message: error?.message || 'Failed to delete user.',
+      });
+    } finally {
+      setIsDeletingUser(false);
     }
   };
 
@@ -614,6 +730,28 @@ const UserManagementPage = () => {
                               <td className="px-6 py-4 text-right">
                                 <div className="flex items-center justify-end gap-2">
                                   <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => openEditUserModal(user)}
+                                    title="Edit user"
+                                  >
+                                    <Icon name="Edit" size={16} />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-destructive hover:text-destructive"
+                                    onClick={() => openDeleteUserModal(user)}
+                                    title={
+                                      user?.id === userProfile?.id
+                                        ? 'You cannot delete your own account'
+                                        : 'Delete user'
+                                    }
+                                    disabled={user?.id === userProfile?.id}
+                                  >
+                                    <Icon name="Trash2" size={16} />
+                                  </Button>
+                                  <Button
                                     variant={user?.isActive ? 'outline' : 'success'}
                                     size="sm"
                                     iconName={user?.isActive ? 'UserX' : 'UserCheck'}
@@ -644,6 +782,100 @@ const UserManagementPage = () => {
         </main>
       </div>
     </div>
+
+      {/* Edit User Modal */}
+      {editUserModalOpen && userBeingEdited && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-lg max-w-lg w-full card-shadow">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Edit User</h3>
+                <p className="text-sm text-muted-foreground">Update user details and access level</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={closeEditUserModal}>
+                <Icon name="X" size={18} />
+              </Button>
+            </div>
+            <form onSubmit={handleUpdateUserProfile} className="p-6 space-y-4">
+              <Input
+                label="Full Name"
+                value={editUserForm?.fullName}
+                onChange={(event) => handleEditUserChange('fullName', event?.target?.value)}
+                error={editUserErrors?.fullName}
+                required
+              />
+              <Input
+                label="Email Address"
+                value={userBeingEdited?.email || ''}
+                readOnly
+                description="Email cannot be changed"
+              />
+              <Input
+                label="Phone Number"
+                value={editUserForm?.phone || ''}
+                onChange={(event) => handleEditUserChange('phone', event?.target?.value)}
+              />
+              <Select
+                label="Role"
+                value={editUserForm?.role}
+                onChange={(value) => handleEditUserChange('role', value)}
+                options={roleOptions}
+                error={editUserErrors?.role}
+              />
+              {editUserErrors?.submit && (
+                <p className="text-sm text-destructive">{editUserErrors?.submit}</p>
+              )}
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <Button type="button" variant="ghost" onClick={closeEditUserModal} disabled={isSavingUser}>
+                  Cancel
+                </Button>
+                <Button type="submit" iconName="Save" loading={isSavingUser} disabled={isSavingUser}>
+                  Save Changes
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Modal */}
+      {deleteUserTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-lg max-w-md w-full card-shadow">
+            <div className="p-6 text-center space-y-4">
+              <Icon name="AlertTriangle" size={48} className="text-destructive mx-auto" />
+              <div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Delete User</h3>
+                <p className="text-muted-foreground">
+                  Are you sure you want to permanently delete{' '}
+                  <span className="font-medium text-foreground">
+                    {deleteUserTarget?.fullName || deleteUserTarget?.email}
+                  </span>
+                  ? This action cannot be undone.
+                </p>
+                {deleteUserTarget?.id === userProfile?.id && (
+                  <p className="text-sm text-destructive mt-2">
+                    You cannot delete your own account while logged in.
+                  </p>
+                )}
+              </div>
+              <div className="flex items-center justify-center gap-3">
+                <Button variant="outline" onClick={closeDeleteUserModal} disabled={isDeletingUser}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteUser}
+                  loading={isDeletingUser}
+                  disabled={isDeletingUser || deleteUserTarget?.id === userProfile?.id}
+                >
+                  Delete User
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
   );
 };
 

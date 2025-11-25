@@ -147,6 +147,28 @@ export const userService = {
     return this.updateUserProfile(userId, { isActive });
   },
 
+  async deleteUser(userId) {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.tanzaniabasketball.com';
+      const response = await fetch(`${apiUrl}/delete-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || errorData.error || 'Failed to delete user');
+      }
+
+      return true;
+    } catch (error) {
+      throw new Error(error?.message || 'Failed to delete user');
+    }
+  },
+
   async uploadAvatar(userId, file) {
     try {
       const {

@@ -28,6 +28,10 @@ app.use('/', uploadApp);
 const userCreationApp = require('./create-user');
 app.use('/', userCreationApp);
 
+// Import user deletion routes (mount at root)
+const deleteUserApp = require('./delete-user');
+app.use('/', deleteUserApp);
+
 // Start combined server
 const PORT = process.env.PORT || 3001;
 
