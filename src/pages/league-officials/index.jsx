@@ -248,18 +248,19 @@ const LeagueOfficials = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <Sidebar
-        isCollapsed={isSidebarCollapsed}
-        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-      />
-      <main
-        className={`pt-16 transition-all duration-300 ${
-          isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
-        }`}
-      >
-        <div className="p-6 space-y-6">
+    <>
+      <div className="min-h-screen bg-background">
+        <Header />
+        <Sidebar
+          isCollapsed={isSidebarCollapsed}
+          onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        />
+        <main
+          className={`pt-16 transition-all duration-300 ${
+            isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+          }`}
+        >
+          <div className="p-6 space-y-6">
           {/* Header */}
           <div className="flex flex-col space-y-4">
             <Breadcrumb items={breadcrumbItems} />
@@ -367,9 +368,9 @@ const LeagueOfficials = () => {
               ))}
             </div>
           )}
-        </div>
-      </main>
-    </div>
+          </div>
+        </main>
+      </div>
 
       {photoModalOpen && selectedOfficialForPhoto && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={closePhotoModal}>
@@ -474,8 +475,7 @@ const LeagueOfficials = () => {
           </div>
         </div>
       )}
-  );
-};
+    </>
   );
 };
 

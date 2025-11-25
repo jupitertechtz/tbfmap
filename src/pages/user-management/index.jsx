@@ -425,11 +425,12 @@ const UserManagementPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <div className="flex">
-        <Sidebar isCollapsed={isSidebarCollapsed} onToggle={handleSidebarToggle} />
-        <main className="flex-1 ml-64 mt-16 p-6">
+    <>
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex">
+          <Sidebar isCollapsed={isSidebarCollapsed} onToggle={handleSidebarToggle} />
+          <main className="flex-1 ml-64 mt-16 p-6">
           <div className="max-w-6xl mx-auto space-y-6">
             <Breadcrumb items={breadcrumbItems} />
 
@@ -779,9 +780,9 @@ const UserManagementPage = () => {
               </div>
             </section>
           </div>
-        </main>
+          </main>
+        </div>
       </div>
-    </div>
 
       {/* Edit User Modal */}
       {editUserModalOpen && userBeingEdited && (
@@ -876,6 +877,7 @@ const UserManagementPage = () => {
           </div>
         </div>
       )}
+    </>
   );
 };
 
