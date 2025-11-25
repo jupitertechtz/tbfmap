@@ -221,4 +221,3 @@ const TeamStatistics = ({ statistics }) => {
 };
 
 export default TeamStatistics;
-export default TeamStatistics;
