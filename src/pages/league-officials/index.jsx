@@ -38,6 +38,10 @@ const LeagueOfficials = () => {
   const [error, setError] = useState(null);
   const [officials, setOfficials] = useState([]);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [selectedOfficialForPhoto, setSelectedOfficialForPhoto] = useState(null);
+  const [selectedOfficialForProfile, setSelectedOfficialForProfile] = useState(null);
   
   const isAdmin = userProfile?.role === 'admin';
 
@@ -74,6 +78,26 @@ const LeagueOfficials = () => {
     { label: 'League Officials' },
   ];
 
+  const openPhotoModal = (official) => {
+    setSelectedOfficialForPhoto(official);
+    setPhotoModalOpen(true);
+  };
+
+  const closePhotoModal = () => {
+    setPhotoModalOpen(false);
+    setSelectedOfficialForPhoto(null);
+  };
+
+  const openProfileModal = (official) => {
+    setSelectedOfficialForProfile(official);
+    setProfileModalOpen(true);
+  };
+
+  const closeProfileModal = () => {
+    setProfileModalOpen(false);
+    setSelectedOfficialForProfile(null);
+  };
+
   const renderOfficialCard = (official) => {
     // Use officialService helper method for consistent photo URL resolution
     const photo = officialService.getOfficialPhotoUrl(official);
@@ -96,13 +120,23 @@ const LeagueOfficials = () => {
         )}
         
         <div className="flex items-center space-x-3">
-          <div className="w-14 h-14 rounded-full overflow-hidden border border-border">
+          <button
+            type="button"
+            className="w-14 h-14 rounded-full overflow-hidden border border-border focus:outline-none focus:ring-2 focus:ring-primary/40"
+            onClick={() => openPhotoModal(official)}
+            title="Click to view full photo"
+          >
             <Image src={photo} alt={official?.userProfile?.fullName || 'Official'} className="w-full h-full object-cover" />
-          </div>
+          </button>
           <div className="flex-1">
-            <p className="text-sm font-medium text-foreground">
+            <button
+              type="button"
+              className="text-sm font-medium text-foreground hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 text-left"
+              onClick={() => openProfileModal(official)}
+              title="Click to view full profile"
+            >
               {official?.userProfile?.fullName || 'Unknown Official'}
-            </p>
+            </button>
             <p className="text-xs text-muted-foreground">
               {official?.certificationLevel || 'Certification Level N/A'}
             </p>
@@ -149,15 +183,25 @@ const LeagueOfficials = () => {
         className="bg-card border border-border rounded-lg p-4 hover:border-primary/50 transition-colors"
       >
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-full overflow-hidden border border-border flex-shrink-0">
+          <button
+            type="button"
+            className="w-16 h-16 rounded-full overflow-hidden border border-border flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-primary/40"
+            onClick={() => openPhotoModal(official)}
+            title="Click to view full photo"
+          >
             <Image src={photo} alt={official?.userProfile?.fullName || 'Official'} className="w-full h-full object-cover" />
-          </div>
+          </button>
           
           <div className="flex-1 grid grid-cols-1 md:grid-cols-5 gap-4 items-center">
             <div className="md:col-span-2">
-              <p className="text-sm font-medium text-foreground">
+              <button
+                type="button"
+                className="text-sm font-medium text-foreground hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 text-left"
+                onClick={() => openProfileModal(official)}
+                title="Click to view full profile"
+              >
                 {official?.userProfile?.fullName || 'Unknown Official'}
-              </p>
+              </button>
               <p className="text-xs text-muted-foreground">
                 {official?.certificationLevel || 'Certification Level N/A'}
               </p>
@@ -326,6 +370,112 @@ const LeagueOfficials = () => {
         </div>
       </main>
     </div>
+
+      {photoModalOpen && selectedOfficialForPhoto && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={closePhotoModal}>
+          <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4 z-10 bg-black/40 hover:bg-black/60 text-white"
+              onClick={closePhotoModal}
+            >
+              <Icon name="X" size={20} />
+            </Button>
+            <Image
+              src={officialService.getOfficialPhotoUrl(selectedOfficialForPhoto)}
+              alt={selectedOfficialForPhoto?.userProfile?.fullName || 'Official photo'}
+              className="w-full h-full object-contain rounded-lg bg-black"
+            />
+          </div>
+        </div>
+      )}
+
+      {profileModalOpen && selectedOfficialForProfile && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={closeProfileModal}>
+          <div className="bg-card border border-border rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto card-shadow" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">
+                  {selectedOfficialForProfile?.userProfile?.fullName || 'Official Profile'}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {selectedOfficialForProfile?.specialization || 'League Official'}
+                </p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={closeProfileModal}>
+                <Icon name="X" size={18} />
+              </Button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-border mx-auto sm:mx-0">
+                  <Image
+                    src={officialService.getOfficialPhotoUrl(selectedOfficialForProfile)}
+                    alt={selectedOfficialForProfile?.userProfile?.fullName || 'Official'}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Certification Level</p>
+                    <p className="text-base font-medium text-foreground">
+                      {selectedOfficialForProfile?.certificationLevel || 'N/A'}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">License Number</p>
+                      <p className="text-base font-medium text-foreground">
+                        {selectedOfficialForProfile?.licenseNumber || 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Experience</p>
+                      <p className="text-base font-medium text-foreground">
+                        {selectedOfficialForProfile?.experienceYears || 0} years
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 bg-muted/30 rounded-lg border border-border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon name="Mail" size={16} className="text-primary" />
+                    <span className="text-sm font-medium text-foreground">Email</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedOfficialForProfile?.userProfile?.email || 'N/A'}
+                  </p>
+                </div>
+                <div className="p-4 bg-muted/30 rounded-lg border border-border">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon name="Phone" size={16} className="text-primary" />
+                    <span className="text-sm font-medium text-foreground">Phone</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedOfficialForProfile?.userProfile?.phone || 'N/A'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 bg-muted/30 rounded-lg border border-border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon name="ClipboardList" size={16} className="text-primary" />
+                  <span className="text-sm font-medium text-foreground">Specialization</span>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {selectedOfficialForProfile?.specialization || 'Not specified'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+  );
+};
   );
 };
 
