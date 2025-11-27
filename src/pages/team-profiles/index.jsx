@@ -368,7 +368,11 @@ const TeamProfiles = () => {
 
     const completedMatches = (matches || []).filter(
       (match) =>
-        match?.matchStatus === 'completed' &&
+        (match?.matchStatus === 'completed' || match?.matchStatus === 'Final' || match?.matchStatus === 'Completed') &&
+        match?.teamScore !== null &&
+        match?.teamScore !== undefined &&
+        match?.opponentScore !== null &&
+        match?.opponentScore !== undefined &&
         typeof match?.teamScore === 'number' &&
         typeof match?.opponentScore === 'number'
     );

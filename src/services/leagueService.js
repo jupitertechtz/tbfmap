@@ -311,11 +311,12 @@ export const leagueService = {
   async recalculateStandings(leagueId) {
     try {
       // Get all completed matches for this league
+      // Include both 'Final', 'Completed' (capitalized) and 'completed' (lowercase) for backward compatibility
       const { data: matches, error: matchesError } = await supabase
         ?.from('matches')
         ?.select('id, home_team_id, away_team_id, home_score, away_score, match_status')
         ?.eq('league_id', leagueId)
-        ?.in('match_status', ['Final', 'Completed']);
+        ?.in('match_status', ['Final', 'Completed', 'completed']);
 
       if (matchesError) throw matchesError;
 
@@ -344,11 +345,28 @@ export const leagueService = {
       matches?.forEach((match) => {
         const homeTeamId = match?.home_team_id;
         const awayTeamId = match?.away_team_id;
-        const homeScore = match?.home_score || 0;
-        const awayScore = match?.away_score || 0;
+        const homeScore = match?.home_score;
+        const awayScore = match?.away_score;
 
-        // Skip if scores are null or teams are missing
-        if (homeScore === null || awayScore === null || !homeTeamId || !awayTeamId) {
+        // Skip if scores are null/undefined or teams are missing
+        // Only process matches with valid numeric scores
+        if (
+          homeScore === null || 
+          homeScore === undefined || 
+          awayScore === null || 
+          awayScore === undefined ||
+          !homeTeamId || 
+          !awayTeamId
+        ) {
+          return;
+        }
+
+        // Convert to numbers to ensure proper comparison
+        const homeScoreNum = Number(homeScore);
+        const awayScoreNum = Number(awayScore);
+        
+        // Skip if conversion resulted in NaN
+        if (isNaN(homeScoreNum) || isNaN(awayScoreNum)) {
           return;
         }
 
@@ -356,26 +374,28 @@ export const leagueService = {
         const homeStats = standingsMap.get(homeTeamId);
         if (homeStats) {
           homeStats.gamesPlayed += 1;
-          homeStats.pointsFor += homeScore;
-          homeStats.pointsAgainst += awayScore;
-          if (homeScore > awayScore) {
+          homeStats.pointsFor += homeScoreNum;
+          homeStats.pointsAgainst += awayScoreNum;
+          if (homeScoreNum > awayScoreNum) {
             homeStats.wins += 1;
-          } else if (homeScore < awayScore) {
+          } else if (homeScoreNum < awayScoreNum) {
             homeStats.losses += 1;
           }
+          // Ties are counted as games played but neither win nor loss
         }
 
         // Update away team stats
         const awayStats = standingsMap.get(awayTeamId);
         if (awayStats) {
           awayStats.gamesPlayed += 1;
-          awayStats.pointsFor += awayScore;
-          awayStats.pointsAgainst += homeScore;
-          if (awayScore > homeScore) {
+          awayStats.pointsFor += awayScoreNum;
+          awayStats.pointsAgainst += homeScoreNum;
+          if (awayScoreNum > homeScoreNum) {
             awayStats.wins += 1;
-          } else if (awayScore < homeScore) {
+          } else if (awayScoreNum < homeScoreNum) {
             awayStats.losses += 1;
           }
+          // Ties are counted as games played but neither win nor loss
         }
       });
 

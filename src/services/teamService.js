@@ -440,10 +440,10 @@ export const teamService = {
         opponentScore: match?.home_team_id === teamId 
           ? match?.away_score 
           : match?.home_score,
-        result: match?.match_status === 'completed' 
+        result: (match?.match_status === 'completed' || match?.match_status === 'Final' || match?.match_status === 'Completed') && match?.home_score !== null && match?.away_score !== null
           ? (match?.home_team_id === teamId 
-              ? (match?.home_score > match?.away_score ? 'Win' : 'Loss')
-              : (match?.away_score > match?.home_score ? 'Win' : 'Loss'))
+              ? (match?.home_score > match?.away_score ? 'Win' : match?.home_score < match?.away_score ? 'Loss' : 'Tie')
+              : (match?.away_score > match?.home_score ? 'Win' : match?.away_score < match?.home_score ? 'Loss' : 'Tie'))
           : null,
       })) || [];
 
