@@ -411,6 +411,63 @@ export const matchService = {
     }
   },
 
+  // Get recently scheduled or completed fixtures
+  async getRecentFixtures(limit = 6) {
+    try {
+      const { data, error } = await supabase
+        ?.from('matches')
+        ?.select(`
+          *,
+          league:leagues(id, name, season),
+          home_team:teams!matches_home_team_id_fkey(id, name, short_name, logo_url),
+          away_team:teams!matches_away_team_id_fkey(id, name, short_name, logo_url)
+        `)
+        ?.order('scheduled_date', { ascending: false })
+        ?.limit(limit);
+
+      if (error) throw error;
+
+      return (
+        data?.map((match) => ({
+          id: match?.id,
+          leagueId: match?.league_id,
+          scheduledDate: match?.scheduled_date,
+          venue: match?.venue,
+          matchStatus: match?.match_status,
+          homeScore: match?.home_score,
+          awayScore: match?.away_score,
+          matchNotes: match?.match_notes,
+          roundName: match?.round || match?.stage || match?.match_stage || null,
+          league: match?.league
+            ? {
+                id: match?.league?.id,
+                name: match?.league?.name,
+                season: match?.league?.season,
+              }
+            : null,
+          homeTeam: match?.home_team
+            ? {
+                id: match?.home_team?.id,
+                name: match?.home_team?.name,
+                shortName: match?.home_team?.short_name,
+                logoUrl: normalizeUrl(match?.home_team?.logo_url),
+              }
+            : null,
+          awayTeam: match?.away_team
+            ? {
+                id: match?.away_team?.id,
+                name: match?.away_team?.name,
+                shortName: match?.away_team?.short_name,
+                logoUrl: normalizeUrl(match?.away_team?.logo_url),
+              }
+            : null,
+        })) || []
+      );
+    } catch (error) {
+      throw new Error(error.message || 'Failed to fetch recent fixtures');
+    }
+  },
+
   // Delete match
   async delete(matchId) {
     try {

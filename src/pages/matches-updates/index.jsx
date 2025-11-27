@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Header from '../../components/ui/Header';
 import Sidebar from '../../components/ui/Sidebar';
 import Breadcrumb from '../../components/ui/Breadcrumb';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/AppIcon';
+import { matchService } from '../../services/matchService';
 
 const MatchesUpdatesPage = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -19,37 +20,10 @@ const MatchesUpdatesPage = () => {
     { id: 2, home: 'Arusha Eagles', away: 'Mbeya Thunder', score: '64 - 64', status: 'Awaiting Update', date: '2025-02-10' },
     { id: 3, home: 'Dodoma Capitals', away: 'Zanzibar Royals', score: '82 - 79', status: 'Final', date: '2025-02-08' },
   ];
-  const initialFixtures = [
-    {
-      id: 'fixture-001',
-      round: 'Regular Season - Week 6',
-      home: 'Tanga Mariners',
-      away: 'Kilimanjaro Giants',
-      date: '2025-02-13',
-      tipoff: '19:30',
-      venue: 'Tanga Regional Indoor Arena',
-    },
-    {
-      id: 'fixture-002',
-      round: 'Regular Season - Week 6',
-      home: 'Mwanza Lakers',
-      away: 'Mbeya Thunder',
-      date: '2025-02-14',
-      tipoff: '18:00',
-      venue: 'CCM Kirumba Arena',
-    },
-    {
-      id: 'fixture-003',
-      round: 'Regular Season - Week 6',
-      home: 'Dar City Warriors',
-      away: 'Zanzibar Royals',
-      date: '2025-02-15',
-      tipoff: '20:00',
-      venue: 'Uwanja wa Taifa Indoor',
-    },
-  ];
   const [matches, setMatches] = useState(initialMatches);
-  const [fixtures] = useState(initialFixtures);
+  const [fixtures, setFixtures] = useState([]);
+  const [fixturesLoading, setFixturesLoading] = useState(false);
+  const [fixturesError, setFixturesError] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -60,6 +34,38 @@ const MatchesUpdatesPage = () => {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [banner, setBanner] = useState(null);
+
+  const fetchRecentFixtures = useCallback(async () => {
+    setFixturesLoading(true);
+    setFixturesError(null);
+    try {
+      const data = await matchService.getRecentFixtures(6);
+      setFixtures(data);
+    } catch (error) {
+      setFixturesError(error?.message || 'Failed to load recent fixtures.');
+    } finally {
+      setFixturesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRecentFixtures();
+  }, [fetchRecentFixtures]);
+
+  const formatFixtureDate = (isoDate) => {
+    if (!isoDate) return 'Date & time TBA';
+    const date = new Date(isoDate);
+    const formattedDate = date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    });
+    const formattedTime = date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    return `${formattedDate} • ${formattedTime}`;
+  };
 
   const openEditModal = (match) => {
     if (!match) return;
@@ -77,14 +83,25 @@ const MatchesUpdatesPage = () => {
 
   const handleSelectFixture = (fixture) => {
     if (!fixture) return;
+    const homeName = fixture?.homeTeam?.name || fixture?.homeTeam?.shortName || 'Home Team';
+    const awayName = fixture?.awayTeam?.name || fixture?.awayTeam?.shortName || 'Away Team';
+    const fixtureDate = `${formatFixtureDate(fixture?.scheduledDate)}${
+      fixture?.venue ? ` • ${fixture?.venue}` : ''
+    }`;
+    const hasOfficialScore =
+      fixture?.homeScore !== null &&
+      fixture?.homeScore !== undefined &&
+      fixture?.awayScore !== null &&
+      fixture?.awayScore !== undefined;
+
     openEditModal({
-      id: `fixture-result-${fixture.id}`,
-      home: fixture.home,
-      away: fixture.away,
-      date: `${fixture.date} • ${fixture.tipoff}`,
-      score: '0 - 0',
-      status: 'Awaiting Update',
-      notes: '',
+      id: fixture.id,
+      home: homeName,
+      away: awayName,
+      date: fixtureDate,
+      score: hasOfficialScore ? `${fixture.homeScore} - ${fixture.awayScore}` : '0 - 0',
+      status: fixture?.matchStatus || 'Awaiting Update',
+      notes: fixture?.matchNotes || '',
     });
   };
 
@@ -160,7 +177,13 @@ const MatchesUpdatesPage = () => {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Button variant="outline" iconName="RefreshCcw">
+                <Button
+                  variant="outline"
+                  iconName="RefreshCcw"
+                  onClick={fetchRecentFixtures}
+                  loading={fixturesLoading}
+                  disabled={fixturesLoading}
+                >
                   Sync Latest Fixtures
                 </Button>
                 <Button variant="default" iconName="Plus">
@@ -183,29 +206,67 @@ const MatchesUpdatesPage = () => {
               </div>
             </div>
             <div className="divide-y divide-border">
-              {fixtures.map((fixture) => (
-                <div key={fixture.id} className="py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{fixture.round}</p>
-                    <p className="text-lg font-semibold text-foreground">
-                      {fixture.home} vs {fixture.away}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {fixture.date} • {fixture.tipoff} • {fixture.venue}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      iconName="FileEdit"
-                      onClick={() => handleSelectFixture(fixture)}
-                    >
-                      Record Result
-                    </Button>
-                  </div>
+              {fixturesLoading && (
+                <div className="py-10 text-center text-muted-foreground space-y-2">
+                  <Icon name="Loader2" size={32} className="mx-auto animate-spin" />
+                  <p>Loading recent fixtures...</p>
                 </div>
-              ))}
+              )}
+              {!fixturesLoading && fixturesError && (
+                <div className="py-8 text-center text-destructive space-y-2">
+                  <Icon name="AlertTriangle" size={28} className="mx-auto" />
+                  <p>{fixturesError}</p>
+                  <Button variant="outline" size="sm" iconName="RefreshCcw" onClick={fetchRecentFixtures}>
+                    Retry
+                  </Button>
+                </div>
+              )}
+              {!fixturesLoading && !fixturesError && fixtures.length === 0 && (
+                <div className="py-8 text-center text-muted-foreground space-y-2">
+                  <Icon name="CalendarX" size={28} className="mx-auto" />
+                  <p>No recent fixtures found. Sync again later.</p>
+                </div>
+              )}
+              {!fixturesLoading &&
+                !fixturesError &&
+                fixtures.map((fixture) => (
+                  <div
+                    key={fixture.id}
+                    className="py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-primary font-semibold">
+                        {fixture?.roundName ||
+                          (fixture?.league?.name
+                            ? `${fixture.league.name}${fixture?.league?.season ? ` • ${fixture.league.season}` : ''}`
+                            : 'League Fixture')}
+                      </p>
+                      <p className="text-lg font-semibold text-foreground">
+                        {fixture?.homeTeam?.name || fixture?.homeTeam?.shortName || 'Home Team'} vs{' '}
+                        {fixture?.awayTeam?.name || fixture?.awayTeam?.shortName || 'Away Team'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {formatFixtureDate(fixture?.scheduledDate)}
+                        {fixture?.venue ? ` • ${fixture.venue}` : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {fixture?.matchStatus && (
+                        <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                          {fixture.matchStatus}
+                        </span>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        iconName="FileEdit"
+                        onClick={() => handleSelectFixture(fixture)}
+                      >
+                        Record Result
+                      </Button>
+                    </div>
+                  </div>
+                ))}
             </div>
           </div>
 
