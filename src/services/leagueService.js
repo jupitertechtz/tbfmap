@@ -307,6 +307,145 @@ export const leagueService = {
     }
   },
 
+  // Recalculate league standings based on completed matches
+  async recalculateStandings(leagueId) {
+    try {
+      // Get all completed matches for this league
+      const { data: matches, error: matchesError } = await supabase
+        ?.from('matches')
+        ?.select('id, home_team_id, away_team_id, home_score, away_score, match_status')
+        ?.eq('league_id', leagueId)
+        ?.in('match_status', ['Final', 'Completed']);
+
+      if (matchesError) throw matchesError;
+
+      // Get all teams in this league
+      const { data: leagueTeams, error: teamsError } = await supabase
+        ?.from('league_teams')
+        ?.select('team_id')
+        ?.eq('league_id', leagueId)
+        ?.eq('is_active', true);
+
+      if (teamsError) throw teamsError;
+
+      // Initialize standings map for all teams
+      const standingsMap = new Map();
+      leagueTeams?.forEach(({ team_id }) => {
+        standingsMap.set(team_id, {
+          gamesPlayed: 0,
+          wins: 0,
+          losses: 0,
+          pointsFor: 0,
+          pointsAgainst: 0,
+        });
+      });
+
+      // Process each completed match
+      matches?.forEach((match) => {
+        const homeTeamId = match?.home_team_id;
+        const awayTeamId = match?.away_team_id;
+        const homeScore = match?.home_score || 0;
+        const awayScore = match?.away_score || 0;
+
+        // Skip if scores are null or teams are missing
+        if (homeScore === null || awayScore === null || !homeTeamId || !awayTeamId) {
+          return;
+        }
+
+        // Update home team stats
+        const homeStats = standingsMap.get(homeTeamId);
+        if (homeStats) {
+          homeStats.gamesPlayed += 1;
+          homeStats.pointsFor += homeScore;
+          homeStats.pointsAgainst += awayScore;
+          if (homeScore > awayScore) {
+            homeStats.wins += 1;
+          } else if (homeScore < awayScore) {
+            homeStats.losses += 1;
+          }
+        }
+
+        // Update away team stats
+        const awayStats = standingsMap.get(awayTeamId);
+        if (awayStats) {
+          awayStats.gamesPlayed += 1;
+          awayStats.pointsFor += awayScore;
+          awayStats.pointsAgainst += homeScore;
+          if (awayScore > homeScore) {
+            awayStats.wins += 1;
+          } else if (awayScore < homeScore) {
+            awayStats.losses += 1;
+          }
+        }
+      });
+
+      // Calculate standings and prepare for database update
+      const standingsArray = Array.from(standingsMap.entries()).map(([teamId, stats]) => {
+        const pointDifference = stats.pointsFor - stats.pointsAgainst;
+        const winPercentage = stats.gamesPlayed > 0 
+          ? (stats.wins / stats.gamesPlayed) * 100 
+          : 0;
+
+        return {
+          teamId,
+          gamesPlayed: stats.gamesPlayed,
+          wins: stats.wins,
+          losses: stats.losses,
+          pointsFor: stats.pointsFor,
+          pointsAgainst: stats.pointsAgainst,
+          pointDifference,
+          winPercentage: parseFloat(winPercentage.toFixed(3)),
+        };
+      });
+
+      // Sort by wins (desc), then point difference (desc), then points for (desc)
+      standingsArray.sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        if (b.pointDifference !== a.pointDifference) return b.pointDifference - a.pointDifference;
+        return b.pointsFor - a.pointsFor;
+      });
+
+      // Update positions and save to database
+      const updatePromises = standingsArray.map((standing, index) => {
+        const position = index + 1;
+        return supabase
+          ?.from('league_standings')
+          ?.upsert({
+            league_id: leagueId,
+            team_id: standing.teamId,
+            games_played: standing.gamesPlayed,
+            wins: standing.wins,
+            losses: standing.losses,
+            points_for: standing.pointsFor,
+            points_against: standing.pointsAgainst,
+            point_difference: standing.pointDifference,
+            win_percentage: standing.winPercentage,
+            position: position,
+            updated_at: new Date()?.toISOString(),
+          }, {
+            onConflict: 'league_id,team_id',
+          });
+      });
+
+      const results = await Promise.all(updatePromises);
+      const errors = results.filter((result) => result?.error);
+      
+      if (errors.length > 0) {
+        console.error('Some standings updates failed:', errors);
+        throw new Error(`Failed to update ${errors.length} team standings`);
+      }
+
+      return {
+        success: true,
+        teamsUpdated: standingsArray.length,
+        message: `Successfully recalculated standings for ${standingsArray.length} teams`,
+      };
+    } catch (error) {
+      console.error('Error recalculating league standings:', error);
+      throw new Error(error?.message || 'Failed to recalculate league standings');
+    }
+  },
+
   // Upload league document file to Supabase Storage
   async uploadFile(file, leagueId, fileType = 'document') {
     try {

@@ -239,7 +239,10 @@ const MatchesUpdatesPage = () => {
       // Refresh fixtures to show updated data
       await fetchRecentFixtures();
 
-      setBanner({ type: 'success', message: 'Match results saved successfully to database.' });
+      setBanner({ 
+        type: 'success', 
+        message: 'Match results saved successfully. League standings and team statistics have been updated.' 
+      });
       
       // Close modal after a brief delay to show success message
       setTimeout(() => {

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { leagueService } from './leagueService';
 
 // Helper function to normalize old URLs (convert http://localhost:3001 to HTTPS API URL)
 const normalizeUrl = (url) => {
@@ -265,6 +266,16 @@ export const matchService = {
   // Update match score and status
   async updateScore(matchId, scoreData) {
     try {
+      // First, get the match to retrieve league_id
+      const { data: existingMatch, error: fetchError } = await supabase
+        ?.from('matches')
+        ?.select('league_id, match_status')
+        ?.eq('id', matchId)
+        ?.single();
+
+      if (fetchError) throw fetchError;
+      if (!existingMatch) throw new Error('Match not found');
+
       const updatePayload = {
         home_score: scoreData?.homeScore !== undefined && scoreData?.homeScore !== null ? parseInt(scoreData.homeScore) : null,
         away_score: scoreData?.awayScore !== undefined && scoreData?.awayScore !== null ? parseInt(scoreData.awayScore) : null,
@@ -284,6 +295,27 @@ export const matchService = {
       const { data, error } = await supabase?.from('matches')?.update(updatePayload)?.eq('id', matchId)?.select()?.single();
 
       if (error) throw error;
+
+      // Recalculate league standings if match status is Final or Completed
+      // and if scores are provided (not null)
+      const isMatchCompleted = (scoreData?.matchStatus === 'Final' || scoreData?.matchStatus === 'Completed') &&
+                                scoreData?.homeScore !== null && scoreData?.awayScore !== null;
+      const wasMatchCompleted = existingMatch?.match_status === 'Final' || existingMatch?.match_status === 'Completed';
+      
+      // Recalculate if:
+      // 1. Match is being marked as completed with scores, OR
+      // 2. Match was already completed and scores are being updated
+      if (existingMatch?.league_id && (isMatchCompleted || wasMatchCompleted)) {
+        try {
+          await leagueService.recalculateStandings(existingMatch.league_id);
+          console.log(`Standings recalculated for league ${existingMatch.league_id}`);
+        } catch (standingsError) {
+          // Log error but don't fail the match update
+          console.error('Failed to recalculate standings:', standingsError);
+          // You might want to throw this error in production, but for now we'll just log it
+        }
+      }
+
       return data;
     } catch (error) {
       throw new Error(error.message || 'Failed to update match score');
