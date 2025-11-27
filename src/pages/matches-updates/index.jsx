@@ -14,11 +14,79 @@ const MatchesUpdatesPage = () => {
     { label: 'Matches Updates' },
   ];
 
-  const sampleMatches = [
+  const initialMatches = [
     { id: 1, home: 'Dar City Warriors', away: 'Mwanza Lakers', score: '78 - 74', status: 'Final', date: '2025-02-12' },
     { id: 2, home: 'Arusha Eagles', away: 'Mbeya Thunder', score: '64 - 64', status: 'Awaiting Update', date: '2025-02-10' },
     { id: 3, home: 'Dodoma Capitals', away: 'Zanzibar Royals', score: '82 - 79', status: 'Final', date: '2025-02-08' },
   ];
+  const [matches, setMatches] = useState(initialMatches);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState(null);
+  const [editForm, setEditForm] = useState({
+    homeScore: '',
+    awayScore: '',
+    status: 'Final',
+    notes: '',
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [banner, setBanner] = useState(null);
+
+  const openEditModal = (match) => {
+    if (!match) return;
+    const [homeScore, awayScore] = match.score.split('-').map((val) => val.trim());
+    setSelectedMatch(match);
+    setEditForm({
+      homeScore: homeScore || '',
+      awayScore: awayScore || '',
+      status: match.status || 'Final',
+      notes: match.notes || '',
+    });
+    setEditModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setEditModalOpen(false);
+    setSelectedMatch(null);
+    setEditForm({
+      homeScore: '',
+      awayScore: '',
+      status: 'Final',
+      notes: '',
+    });
+  };
+
+  const handleEditFormChange = (field, value) => {
+    setEditForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleSaveMatch = async (event) => {
+    event?.preventDefault();
+    if (!selectedMatch) return;
+
+    setIsSaving(true);
+    setBanner(null);
+    try {
+      const updatedMatch = {
+        ...selectedMatch,
+        score: `${editForm.homeScore || 0} - ${editForm.awayScore || 0}`,
+        status: editForm.status,
+        notes: editForm.notes,
+      };
+
+      setMatches((prev) =>
+        prev.map((match) => (match.id === updatedMatch.id ? updatedMatch : match))
+      );
+      setBanner({ type: 'success', message: 'Match updated successfully.' });
+      closeEditModal();
+    } catch (error) {
+      setBanner({ type: 'error', message: error?.message || 'Failed to save match.' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -70,7 +138,7 @@ const MatchesUpdatesPage = () => {
                 <Icon name="ListChecks" size={20} className="text-muted-foreground" />
               </div>
               <div className="divide-y divide-border">
-                {sampleMatches.map((match) => (
+                {matches.map((match) => (
                   <div key={match.id} className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
                       <p className="font-medium text-foreground">
@@ -89,6 +157,16 @@ const MatchesUpdatesPage = () => {
                       >
                         {match.status}
                       </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        iconName="Edit"
+                        onClick={() => openEditModal(match)}
+                      >
+                        Edit
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -137,6 +215,93 @@ const MatchesUpdatesPage = () => {
           </div>
         </div>
       </main>
+      {editModalOpen && selectedMatch && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-border rounded-lg max-w-lg w-full card-shadow">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Edit Match</h3>
+                <p className="text-sm text-muted-foreground">
+                  {selectedMatch.home} vs {selectedMatch.away} — {selectedMatch.date}
+                </p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={closeEditModal}>
+                <Icon name="X" size={18} />
+              </Button>
+            </div>
+            <form onSubmit={handleSaveMatch} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-muted-foreground uppercase tracking-wide">Home Score</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.homeScore}
+                    onChange={(e) => handleEditFormChange('homeScore', e.target.value)}
+                    className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground uppercase tracking-wide">Away Score</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.awayScore}
+                    onChange={(e) => handleEditFormChange('awayScore', e.target.value)}
+                    className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide">Match Status</label>
+                <select
+                  value={editForm.status}
+                  onChange={(e) => handleEditFormChange('status', e.target.value)}
+                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="Final">Final</option>
+                  <option value="Awaiting Update">Awaiting Update</option>
+                  <option value="Overtime Review">Overtime Review</option>
+                  <option value="Suspended">Suspended</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide">Notes / Highlights</label>
+                <textarea
+                  value={editForm.notes}
+                  onChange={(e) => handleEditFormChange('notes', e.target.value)}
+                  rows={4}
+                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  placeholder="Add key statistics, MVP mention, injuries, overtime details..."
+                />
+              </div>
+
+              {banner && (
+                <div
+                  className={`px-3 py-2 rounded text-sm ${
+                    banner.type === 'success'
+                      ? 'bg-success/10 text-success'
+                      : 'bg-destructive/10 text-destructive'
+                  }`}
+                >
+                  {banner.message}
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2">
+                <Button type="button" variant="ghost" onClick={closeEditModal} disabled={isSaving}>
+                  Cancel
+                </Button>
+                <Button type="submit" iconName="Save" loading={isSaving} disabled={isSaving}>
+                  Save Updates
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
