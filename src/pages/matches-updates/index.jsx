@@ -5,6 +5,7 @@ import Breadcrumb from '../../components/ui/Breadcrumb';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/AppIcon';
 import { matchService } from '../../services/matchService';
+import { leagueService } from '../../services/leagueService';
 
 const MatchesUpdatesPage = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -24,6 +25,13 @@ const MatchesUpdatesPage = () => {
   const [fixtures, setFixtures] = useState([]);
   const [fixturesLoading, setFixturesLoading] = useState(false);
   const [fixturesError, setFixturesError] = useState(null);
+  const [leagues, setLeagues] = useState([]);
+  const [leaguesLoading, setLeaguesLoading] = useState(false);
+  const [leaguesError, setLeaguesError] = useState(null);
+  const [filters, setFilters] = useState({
+    leagueId: '',
+    fixtureDate: '',
+  });
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -35,22 +43,67 @@ const MatchesUpdatesPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [banner, setBanner] = useState(null);
 
-  const fetchRecentFixtures = useCallback(async () => {
-    setFixturesLoading(true);
-    setFixturesError(null);
+  const fetchRecentFixtures = useCallback(
+    async (overrideFilters = {}) => {
+      setFixturesLoading(true);
+      setFixturesError(null);
+      try {
+        const data = await matchService.getRecentFixtures({
+          limit: 10,
+          leagueId:
+            overrideFilters.leagueId !== undefined
+              ? overrideFilters.leagueId || undefined
+              : filters.leagueId || undefined,
+          fixtureDate:
+            overrideFilters.fixtureDate !== undefined
+              ? overrideFilters.fixtureDate || undefined
+              : filters.fixtureDate || undefined,
+        });
+        setFixtures(data);
+      } catch (error) {
+        setFixturesError(error?.message || 'Failed to load recent fixtures.');
+      } finally {
+        setFixturesLoading(false);
+      }
+    },
+    [filters]
+  );
+
+  const fetchLeagues = useCallback(async () => {
+    setLeaguesLoading(true);
+    setLeaguesError(null);
     try {
-      const data = await matchService.getRecentFixtures(6);
-      setFixtures(data);
+      const leaguesData = await leagueService.getAll();
+      setLeagues(leaguesData);
     } catch (error) {
-      setFixturesError(error?.message || 'Failed to load recent fixtures.');
+      setLeaguesError(error?.message || 'Failed to load leagues.');
     } finally {
-      setFixturesLoading(false);
+      setLeaguesLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    fetchLeagues();
+  }, [fetchLeagues]);
+
+  useEffect(() => {
     fetchRecentFixtures();
   }, [fetchRecentFixtures]);
+
+  const handleFilterChange = (field, value) => {
+    setFilters((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleClearFilters = () => {
+    setFilters({
+      leagueId: '',
+      fixtureDate: '',
+    });
+    fetchRecentFixtures({ leagueId: '', fixtureDate: '' });
+  };
 
   const formatFixtureDate = (isoDate) => {
     if (!isoDate) return 'Date & time TBA';
@@ -180,7 +233,7 @@ const MatchesUpdatesPage = () => {
                 <Button
                   variant="outline"
                   iconName="RefreshCcw"
-                  onClick={fetchRecentFixtures}
+                  onClick={() => fetchRecentFixtures()}
                   loading={fixturesLoading}
                   disabled={fixturesLoading}
                 >
@@ -203,6 +256,52 @@ const MatchesUpdatesPage = () => {
                 <p className="text-sm text-muted-foreground">
                   Choose a recently played fixture to start recording the official results and statistics.
                 </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide">League</label>
+                <select
+                  value={filters.leagueId}
+                  onChange={(e) => handleFilterChange('leagueId', e.target.value)}
+                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                >
+                  <option value="">All Leagues</option>
+                  {leaguesLoading && <option>Loading leagues...</option>}
+                  {!leaguesLoading &&
+                    leagues?.map((league) => (
+                      <option key={league.id} value={league.id}>
+                        {league.name}
+                        {league.season ? ` • ${league.season}` : ''}
+                      </option>
+                    ))}
+                </select>
+                {leaguesError && <p className="text-xs text-destructive mt-1">{leaguesError}</p>}
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground uppercase tracking-wide">Fixture Date</label>
+                <input
+                  type="date"
+                  value={filters.fixtureDate}
+                  onChange={(e) => handleFilterChange('fixtureDate', e.target.value)}
+                  className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                />
+              </div>
+              <div className="flex items-end gap-2">
+                <Button
+                  variant="outline"
+                  iconName="Filter"
+                  className="flex-1"
+                  onClick={() => fetchRecentFixtures()}
+                  disabled={fixturesLoading}
+                >
+                  Apply Filters
+                </Button>
+                {(filters.leagueId || filters.fixtureDate) && (
+                  <Button variant="ghost" onClick={handleClearFilters}>
+                    Clear
+                  </Button>
+                )}
               </div>
             </div>
             <div className="divide-y divide-border">

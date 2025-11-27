@@ -412,9 +412,11 @@ export const matchService = {
   },
 
   // Get recently scheduled or completed fixtures
-  async getRecentFixtures(limit = 6) {
+  async getRecentFixtures(options = {}) {
     try {
-      const { data, error } = await supabase
+      const { limit = 6, leagueId, fixtureDate } = options || {};
+
+      let query = supabase
         ?.from('matches')
         ?.select(`
           *,
@@ -424,6 +426,22 @@ export const matchService = {
         `)
         ?.order('scheduled_date', { ascending: false })
         ?.limit(limit);
+
+      if (leagueId) {
+        query = query?.eq('league_id', leagueId);
+      }
+
+      if (fixtureDate) {
+        const startOfDay = new Date(fixtureDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(fixtureDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        query = query
+          ?.gte('scheduled_date', startOfDay.toISOString())
+          ?.lte('scheduled_date', endOfDay.toISOString());
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
