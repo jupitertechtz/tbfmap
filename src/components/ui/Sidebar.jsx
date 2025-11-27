@@ -63,7 +63,8 @@ const Sidebar = ({ isCollapsed = false, onToggle }) => {
       label: 'Match Operations',
       icon: 'Calendar',
       items: [
-        { label: 'Match Management', path: '/match-management', icon: 'Clock' },
+        { label: 'Live Match Management', path: '/match-management', icon: 'Activity' },
+        { label: 'Matches Updates', path: '/matches-updates', icon: 'ClipboardList' },
       ],
       roles: ['admin', 'staff', 'official'], // Exclude team_manager
     },

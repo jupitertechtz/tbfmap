@@ -25,6 +25,7 @@ import OfficialRegistration from './pages/official-registration';
 import LeagueOfficials from './pages/league-officials';
 import GamesManagement from './pages/games-management';
 import MatchCenter from './pages/match-center';
+import MatchesUpdatesPage from './pages/matches-updates';
 
 const Routes = () => {
   return (
@@ -44,6 +45,7 @@ const Routes = () => {
         <Route path="/team-management" element={<TeamManagementPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/match-management" element={<MatchManagement />} />
+        <Route path="/matches-updates" element={<MatchesUpdatesPage />} />
         <Route path="/team-profiles" element={<TeamProfiles />} />
         <Route path="/player-registration" element={<PlayerRegistration />} />
         <Route path="/official-registration" element={<OfficialRegistration />} />
