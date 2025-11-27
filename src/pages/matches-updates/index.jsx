@@ -122,14 +122,30 @@ const MatchesUpdatesPage = () => {
 
   const openEditModal = (match) => {
     if (!match) return;
-    const safeScore = match.score && match.score.includes('-') ? match.score : '0 - 0';
-    const [homeScore, awayScore] = safeScore.split('-').map((val) => val.trim());
+    
+    // Handle both database fixtures and static matches
+    let homeScore = '';
+    let awayScore = '';
+    
+    if (match.score && typeof match.score === 'string' && match.score.includes('-')) {
+      const scoreParts = match.score.split('-').map((val) => val.trim());
+      homeScore = scoreParts[0] || '';
+      awayScore = scoreParts[1] || '';
+    } else if (match.homeScore !== undefined && match.awayScore !== undefined) {
+      // Direct score values from database fixture
+      homeScore = match.homeScore?.toString() || '';
+      awayScore = match.awayScore?.toString() || '';
+    } else {
+      homeScore = '';
+      awayScore = '';
+    }
+    
     setSelectedMatch(match);
     setEditForm({
-      homeScore: homeScore || '',
-      awayScore: awayScore || '',
-      status: match.status || 'Final',
-      notes: match.notes || '',
+      homeScore: homeScore,
+      awayScore: awayScore,
+      status: match.status || match.matchStatus || 'Final',
+      notes: match.notes || match.matchNotes || '',
     });
     setEditModalOpen(true);
   };
@@ -148,13 +164,18 @@ const MatchesUpdatesPage = () => {
       fixture?.awayScore !== undefined;
 
     openEditModal({
-      id: fixture.id,
+      id: fixture.id, // Database match ID
       home: homeName,
       away: awayName,
       date: fixtureDate,
       score: hasOfficialScore ? `${fixture.homeScore} - ${fixture.awayScore}` : '0 - 0',
       status: fixture?.matchStatus || 'Awaiting Update',
       notes: fixture?.matchNotes || '',
+      // Pass actual score values for easier form population
+      homeScore: fixture?.homeScore,
+      awayScore: fixture?.awayScore,
+      matchStatus: fixture?.matchStatus,
+      matchNotes: fixture?.matchNotes,
     });
   };
 
@@ -178,14 +199,35 @@ const MatchesUpdatesPage = () => {
 
   const handleSaveMatch = async (event) => {
     event?.preventDefault();
-    if (!selectedMatch) return;
+    if (!selectedMatch || !selectedMatch.id) {
+      setBanner({ type: 'error', message: 'Invalid match selected. Please select a fixture from the list.' });
+      return;
+    }
 
     setIsSaving(true);
     setBanner(null);
     try {
+      // Convert form values to numbers
+      const homeScore = editForm.homeScore ? parseInt(editForm.homeScore, 10) : null;
+      const awayScore = editForm.awayScore ? parseInt(editForm.awayScore, 10) : null;
+
+      // Determine if match should be marked as ended
+      const now = new Date().toISOString();
+      const shouldEndMatch = editForm.status === 'Final' || editForm.status === 'Completed';
+
+      // Update match in database
+      await matchService.updateScore(selectedMatch.id, {
+        homeScore: homeScore,
+        awayScore: awayScore,
+        matchStatus: editForm.status || 'Final',
+        matchNotes: editForm.notes || null,
+        endedAt: shouldEndMatch ? now : null,
+      });
+
+      // Update local state for display
       const updatedMatch = {
         ...selectedMatch,
-        score: `${editForm.homeScore || 0} - ${editForm.awayScore || 0}`,
+        score: `${homeScore || 0} - ${awayScore || 0}`,
         status: editForm.status,
         notes: editForm.notes,
       };
@@ -193,10 +235,19 @@ const MatchesUpdatesPage = () => {
       setMatches((prev) =>
         prev.map((match) => (match.id === updatedMatch.id ? updatedMatch : match))
       );
-      setBanner({ type: 'success', message: 'Match updated successfully.' });
-      closeEditModal();
+
+      // Refresh fixtures to show updated data
+      await fetchRecentFixtures();
+
+      setBanner({ type: 'success', message: 'Match results saved successfully to database.' });
+      
+      // Close modal after a brief delay to show success message
+      setTimeout(() => {
+        closeEditModal();
+      }, 1000);
     } catch (error) {
-      setBanner({ type: 'error', message: error?.message || 'Failed to save match.' });
+      console.error('Error saving match:', error);
+      setBanner({ type: 'error', message: error?.message || 'Failed to save match results to database.' });
     } finally {
       setIsSaving(false);
     }

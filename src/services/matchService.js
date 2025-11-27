@@ -265,16 +265,23 @@ export const matchService = {
   // Update match score and status
   async updateScore(matchId, scoreData) {
     try {
-      const { data, error } = await supabase?.from('matches')?.update({
-          home_score: scoreData?.homeScore,
-          away_score: scoreData?.awayScore,
-          quarter: scoreData?.quarter,
-          time_remaining: scoreData?.timeRemaining,
-          match_status: scoreData?.matchStatus,
-          started_at: scoreData?.startedAt,
-          ended_at: scoreData?.endedAt,
-          updated_at: new Date()?.toISOString()
-        })?.eq('id', matchId)?.select()?.single();
+      const updatePayload = {
+        home_score: scoreData?.homeScore !== undefined && scoreData?.homeScore !== null ? parseInt(scoreData.homeScore) : null,
+        away_score: scoreData?.awayScore !== undefined && scoreData?.awayScore !== null ? parseInt(scoreData.awayScore) : null,
+        quarter: scoreData?.quarter,
+        time_remaining: scoreData?.timeRemaining,
+        match_status: scoreData?.matchStatus,
+        started_at: scoreData?.startedAt,
+        ended_at: scoreData?.endedAt,
+        updated_at: new Date()?.toISOString()
+      };
+
+      // Include match notes if provided
+      if (scoreData?.matchNotes !== undefined) {
+        updatePayload.match_notes = scoreData.matchNotes;
+      }
+
+      const { data, error } = await supabase?.from('matches')?.update(updatePayload)?.eq('id', matchId)?.select()?.single();
 
       if (error) throw error;
       return data;
