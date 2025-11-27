@@ -19,7 +19,37 @@ const MatchesUpdatesPage = () => {
     { id: 2, home: 'Arusha Eagles', away: 'Mbeya Thunder', score: '64 - 64', status: 'Awaiting Update', date: '2025-02-10' },
     { id: 3, home: 'Dodoma Capitals', away: 'Zanzibar Royals', score: '82 - 79', status: 'Final', date: '2025-02-08' },
   ];
+  const initialFixtures = [
+    {
+      id: 'fixture-001',
+      round: 'Regular Season - Week 6',
+      home: 'Tanga Mariners',
+      away: 'Kilimanjaro Giants',
+      date: '2025-02-13',
+      tipoff: '19:30',
+      venue: 'Tanga Regional Indoor Arena',
+    },
+    {
+      id: 'fixture-002',
+      round: 'Regular Season - Week 6',
+      home: 'Mwanza Lakers',
+      away: 'Mbeya Thunder',
+      date: '2025-02-14',
+      tipoff: '18:00',
+      venue: 'CCM Kirumba Arena',
+    },
+    {
+      id: 'fixture-003',
+      round: 'Regular Season - Week 6',
+      home: 'Dar City Warriors',
+      away: 'Zanzibar Royals',
+      date: '2025-02-15',
+      tipoff: '20:00',
+      venue: 'Uwanja wa Taifa Indoor',
+    },
+  ];
   const [matches, setMatches] = useState(initialMatches);
+  const [fixtures] = useState(initialFixtures);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [editForm, setEditForm] = useState({
@@ -33,7 +63,8 @@ const MatchesUpdatesPage = () => {
 
   const openEditModal = (match) => {
     if (!match) return;
-    const [homeScore, awayScore] = match.score.split('-').map((val) => val.trim());
+    const safeScore = match.score && match.score.includes('-') ? match.score : '0 - 0';
+    const [homeScore, awayScore] = safeScore.split('-').map((val) => val.trim());
     setSelectedMatch(match);
     setEditForm({
       homeScore: homeScore || '',
@@ -42,6 +73,19 @@ const MatchesUpdatesPage = () => {
       notes: match.notes || '',
     });
     setEditModalOpen(true);
+  };
+
+  const handleSelectFixture = (fixture) => {
+    if (!fixture) return;
+    openEditModal({
+      id: `fixture-result-${fixture.id}`,
+      home: fixture.home,
+      away: fixture.away,
+      date: `${fixture.date} • ${fixture.tipoff}`,
+      score: '0 - 0',
+      status: 'Awaiting Update',
+      notes: '',
+    });
   };
 
   const closeEditModal = () => {
@@ -123,6 +167,45 @@ const MatchesUpdatesPage = () => {
                   Record Manual Update
                 </Button>
               </div>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg card-shadow p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-success/10 rounded-lg">
+                <Icon name="CalendarClock" size={20} className="text-success" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">Select Recent Fixtures</h2>
+                <p className="text-sm text-muted-foreground">
+                  Choose a recently played fixture to start recording the official results and statistics.
+                </p>
+              </div>
+            </div>
+            <div className="divide-y divide-border">
+              {fixtures.map((fixture) => (
+                <div key={fixture.id} className="py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{fixture.round}</p>
+                    <p className="text-lg font-semibold text-foreground">
+                      {fixture.home} vs {fixture.away}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {fixture.date} • {fixture.tipoff} • {fixture.venue}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      iconName="FileEdit"
+                      onClick={() => handleSelectFixture(fixture)}
+                    >
+                      Record Result
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
