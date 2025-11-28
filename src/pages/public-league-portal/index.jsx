@@ -297,7 +297,6 @@ const PublicLeaguePortal = () => {
       // 1. Match has scores (completed)
       // 2. Match day has passed (scheduled date is in the past)
       // 3. Match status indicates completion
-      const now = new Date();
       const completed = allMatches
         .filter(match => {
           const hasScores = match.homeScore !== null && match.homeScore !== undefined &&
