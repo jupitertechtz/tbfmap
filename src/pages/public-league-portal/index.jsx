@@ -228,28 +228,150 @@ const PublicLeaguePortal = () => {
   const loadStandings = async (leagueId) => {
     setIsLoadingStandings(true);
     try {
-      const standings = await leagueService.getStandings(leagueId);
-      
-      // Fetch all matches for this league to calculate form
+      // Fetch all matches for this league first (needed for stats calculation)
       let allMatches = [];
       try {
         allMatches = await matchService.getAll();
         // Filter by league
         allMatches = allMatches.filter(match => match.leagueId === leagueId);
       } catch (err) {
-        console.warn('Could not fetch matches for form calculation:', err);
+        console.warn('Could not fetch matches for standings calculation:', err);
       }
       
-      // Transform database format to component format
-      const transformedStandings = standings.map((standing) => {
+      // Get standings from database
+      let standings = [];
+      try {
+        standings = await leagueService.getStandings(leagueId);
+      } catch (err) {
+        console.warn('Could not fetch standings from database:', err);
+      }
+      
+      // Calculate statistics from matches for all teams that have played
+      const now = new Date();
+      const teamStatsMap = new Map();
+      
+      // Process all completed matches to calculate team statistics
+      allMatches
+        .filter(match => {
+          const hasScores = match.homeScore !== null && match.homeScore !== undefined &&
+                          match.awayScore !== null && match.awayScore !== undefined;
+          const matchDate = match.scheduledDate ? new Date(match.scheduledDate) : null;
+          const matchDayHasPassed = matchDate ? matchDate < now : false;
+          const isCompleted = match.matchStatus === 'completed';
+          return hasScores && (matchDayHasPassed || isCompleted);
+        })
+        .forEach(match => {
+          const homeTeamId = match.homeTeamId;
+          const awayTeamId = match.awayTeamId;
+          const homeScore = Number(match.homeScore) || 0;
+          const awayScore = Number(match.awayScore) || 0;
+          
+          // Initialize home team stats if not exists
+          if (!teamStatsMap.has(homeTeamId)) {
+            teamStatsMap.set(homeTeamId, {
+              gamesPlayed: 0,
+              wins: 0,
+              losses: 0,
+              pointsFor: 0,
+              pointsAgainst: 0,
+              team: match.homeTeam
+            });
+          }
+          
+          // Initialize away team stats if not exists
+          if (!teamStatsMap.has(awayTeamId)) {
+            teamStatsMap.set(awayTeamId, {
+              gamesPlayed: 0,
+              wins: 0,
+              losses: 0,
+              pointsFor: 0,
+              pointsAgainst: 0,
+              team: match.awayTeam
+            });
+          }
+          
+          // Update home team stats
+          const homeStats = teamStatsMap.get(homeTeamId);
+          homeStats.gamesPlayed += 1;
+          homeStats.pointsFor += homeScore;
+          homeStats.pointsAgainst += awayScore;
+          if (homeScore > awayScore) {
+            homeStats.wins += 1;
+          } else if (homeScore < awayScore) {
+            homeStats.losses += 1;
+          }
+          
+          // Update away team stats
+          const awayStats = teamStatsMap.get(awayTeamId);
+          awayStats.gamesPlayed += 1;
+          awayStats.pointsFor += awayScore;
+          awayStats.pointsAgainst += homeScore;
+          if (awayScore > homeScore) {
+            awayStats.wins += 1;
+          } else if (awayScore < homeScore) {
+            awayStats.losses += 1;
+          }
+        });
+      
+      // Merge database standings with calculated stats from matches
+      // Use calculated stats from matches as the source of truth, but preserve position from database
+      const standingsMap = new Map();
+      
+      // First, add all teams from database standings
+      standings.forEach(standing => {
+        standingsMap.set(standing.teamId, {
+          ...standing,
+          // Use calculated stats if available, otherwise use database values
+          gamesPlayed: teamStatsMap.has(standing.teamId) 
+            ? teamStatsMap.get(standing.teamId).gamesPlayed 
+            : (standing.gamesPlayed ?? 0),
+          wins: teamStatsMap.has(standing.teamId)
+            ? teamStatsMap.get(standing.teamId).wins
+            : (standing.wins ?? 0),
+          losses: teamStatsMap.has(standing.teamId)
+            ? teamStatsMap.get(standing.teamId).losses
+            : (standing.losses ?? 0),
+          pointsFor: teamStatsMap.has(standing.teamId)
+            ? teamStatsMap.get(standing.teamId).pointsFor
+            : (standing.pointsFor ?? 0),
+          pointsAgainst: teamStatsMap.has(standing.teamId)
+            ? teamStatsMap.get(standing.teamId).pointsAgainst
+            : (standing.pointsAgainst ?? 0),
+          pointDifference: teamStatsMap.has(standing.teamId)
+            ? (teamStatsMap.get(standing.teamId).pointsFor - teamStatsMap.get(standing.teamId).pointsAgainst)
+            : (standing.pointDifference ?? 0),
+        });
+      });
+      
+      // Add teams that have played matches but don't have standings entries
+      teamStatsMap.forEach((stats, teamId) => {
+        if (!standingsMap.has(teamId)) {
+          standingsMap.set(teamId, {
+            id: null,
+            teamId: teamId,
+            gamesPlayed: stats.gamesPlayed,
+            wins: stats.wins,
+            losses: stats.losses,
+            pointsFor: stats.pointsFor,
+            pointsAgainst: stats.pointsAgainst,
+            pointDifference: stats.pointsFor - stats.pointsAgainst,
+            winPercentage: stats.gamesPlayed > 0 ? (stats.wins / stats.gamesPlayed) * 100 : 0,
+            position: null,
+            team: stats.team
+          });
+        }
+      });
+      
+      // Transform to component format
+      const transformedStandings = Array.from(standingsMap.values()).map((standing) => {
         // Calculate league points according to FIBA guidelines:
         // - Win = 2 points
         // - Loss = 1 point
         // - Forfeit (by the team) = 0 points (instead of 1 point for loss)
         // Note: Forfeits are not yet tracked separately in the database
         // When forfeit tracking is added, subtract: (forfeits * 1) from the calculation
-        const wins = standing.wins || 0;
-        const losses = standing.losses || 0;
+        const wins = standing.wins ?? 0; // Use calculated wins from matches
+        const losses = standing.losses ?? 0; // Use calculated losses from matches
         // FIBA points: (wins * 2) + (losses * 1)
         // If forfeits are tracked: (wins * 2) + (losses * 1) - (forfeits * 1)
         const leaguePoints = (wins * 2) + (losses * 1);
@@ -257,18 +379,27 @@ const PublicLeaguePortal = () => {
         // Calculate form from recent matches
         const teamForm = calculateTeamForm(standing.teamId, allMatches);
         
+        // Get team info (from database standings or from match data)
+        const teamInfo = standing.team || {
+          id: standing.teamId,
+          name: 'Unknown Team',
+          shortName: 'N/A',
+          logoUrl: '/assets/images/no_image.png'
+        };
+        
         // Ensure all statistics are properly set (including 0 values)
+        // Use calculated values from matches as source of truth
         return {
           id: standing.teamId || standing.id,
-          name: standing.team?.name || 'Unknown Team',
-          shortName: standing.team?.shortName || 'N/A',
-          logo: standing.team?.logoUrl || '/assets/images/no_image.png',
-          logoAlt: `${standing.team?.name || 'Team'} logo`,
-          gamesPlayed: standing.gamesPlayed ?? 0, // Use nullish coalescing to preserve 0
-          wins: wins ?? 0,
-          losses: losses ?? 0,
-          points: leaguePoints ?? 0,
-          pointsDiff: standing.pointDifference ?? 0,
+          name: teamInfo.name || 'Unknown Team',
+          shortName: teamInfo.shortName || 'N/A',
+          logo: teamInfo.logoUrl || '/assets/images/no_image.png',
+          logoAlt: `${teamInfo.name || 'Team'} logo`,
+          gamesPlayed: standing.gamesPlayed ?? 0, // Use calculated games played from matches
+          wins: wins, // Use calculated wins
+          losses: losses, // Use calculated losses
+          points: leaguePoints, // Calculate from wins and losses
+          pointsDiff: standing.pointDifference ?? 0, // Use calculated point difference
           position: standing.position ?? null, // Keep position for sorting
           form: teamForm || '-----', // Calculated from recent matches, fallback to '-----'
           positionChange: 0 // TODO: Calculate position change (requires previous standings data)
