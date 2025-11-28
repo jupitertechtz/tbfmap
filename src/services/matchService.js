@@ -453,7 +453,7 @@ export const matchService = {
   // Get recently scheduled or completed fixtures
   async getRecentFixtures(options = {}) {
     try {
-      const { limit = 6, leagueId, fixtureDate } = options || {};
+      const { limit = 20, leagueId, fixtureDate } = options || {};
 
       let query = supabase
         ?.from('matches')
@@ -463,8 +463,8 @@ export const matchService = {
           home_team:teams!matches_home_team_id_fkey(id, name, short_name, logo_url),
           away_team:teams!matches_away_team_id_fkey(id, name, short_name, logo_url)
         `)
-        ?.order('scheduled_date', { ascending: false })
-        ?.limit(limit);
+        // Order by: completed matches with scores first, then by scheduled date (most recent first)
+        ?.order('scheduled_date', { ascending: false });
 
       if (leagueId) {
         query = query?.eq('league_id', leagueId);
@@ -484,8 +484,23 @@ export const matchService = {
 
       if (error) throw error;
 
+      // Sort matches: completed matches with scores first, then by scheduled date
+      const sortedData = (data || []).sort((a, b) => {
+        const aHasScores = a?.home_score !== null && a?.away_score !== null;
+        const bHasScores = b?.home_score !== null && b?.away_score !== null;
+        
+        // Completed matches with scores come first
+        if (aHasScores && !bHasScores) return -1;
+        if (!aHasScores && bHasScores) return 1;
+        
+        // Then sort by scheduled date (most recent first)
+        const dateA = new Date(a?.scheduled_date || 0);
+        const dateB = new Date(b?.scheduled_date || 0);
+        return dateB - dateA;
+      }).slice(0, limit);
+
       return (
-        data?.map((match) => ({
+        sortedData?.map((match) => ({
           id: match?.id,
           leagueId: match?.league_id,
           scheduledDate: match?.scheduled_date,

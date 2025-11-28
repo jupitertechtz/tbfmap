@@ -211,15 +211,21 @@ const MatchesUpdatesPage = () => {
       const homeScore = editForm.homeScore ? parseInt(editForm.homeScore, 10) : null;
       const awayScore = editForm.awayScore ? parseInt(editForm.awayScore, 10) : null;
 
+      // If scores are provided, automatically set status to "Final"
+      // This ensures matches with results are always marked as completed
+      const finalStatus = (homeScore !== null && awayScore !== null) 
+        ? 'Final' 
+        : (editForm.status || 'Scheduled');
+
       // Determine if match should be marked as ended
       const now = new Date().toISOString();
-      const shouldEndMatch = editForm.status === 'Final' || editForm.status === 'Completed';
+      const shouldEndMatch = finalStatus === 'Final' || finalStatus === 'Completed' || finalStatus === 'completed';
 
       // Update match in database
       await matchService.updateScore(selectedMatch.id, {
         homeScore: homeScore,
         awayScore: awayScore,
-        matchStatus: editForm.status || 'Final',
+        matchStatus: finalStatus,
         matchNotes: editForm.notes || null,
         endedAt: shouldEndMatch ? now : null,
       });
@@ -404,18 +410,50 @@ const MatchesUpdatesPage = () => {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {fixture?.matchStatus && (
-                        <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
-                          {fixture.matchStatus}
+                      {/* Show score if match has been completed */}
+                      {fixture?.homeScore !== null && fixture?.homeScore !== undefined &&
+                       fixture?.awayScore !== null && fixture?.awayScore !== undefined && (
+                        <span className="text-sm font-semibold text-foreground">
+                          {fixture.homeScore} - {fixture.awayScore}
                         </span>
                       )}
+                      {/* Determine actual status - if scores exist, it's completed */}
+                      {(() => {
+                        const hasScores = fixture?.homeScore !== null && fixture?.homeScore !== undefined &&
+                                         fixture?.awayScore !== null && fixture?.awayScore !== undefined;
+                        const actualStatus = hasScores 
+                          ? (fixture?.matchStatus === 'Final' || fixture?.matchStatus === 'Completed' || fixture?.matchStatus === 'completed' 
+                              ? 'Final' 
+                              : 'Completed')
+                          : (fixture?.matchStatus || 'Scheduled');
+                        
+                        const statusColors = {
+                          'Final': 'bg-success/10 text-success',
+                          'Completed': 'bg-success/10 text-success',
+                          'completed': 'bg-success/10 text-success',
+                          'Live': 'bg-error/10 text-error',
+                          'live': 'bg-error/10 text-error',
+                          'Scheduled': 'bg-primary/10 text-primary',
+                          'scheduled': 'bg-primary/10 text-primary',
+                          'Awaiting Update': 'bg-warning/10 text-warning',
+                        };
+                        
+                        return (
+                          <span className={`text-xs px-2 py-1 rounded-full capitalize ${statusColors[actualStatus] || 'bg-muted text-muted-foreground'}`}>
+                            {actualStatus}
+                          </span>
+                        );
+                      })()}
                       <Button
                         variant="outline"
                         size="sm"
                         iconName="FileEdit"
                         onClick={() => handleSelectFixture(fixture)}
                       >
-                        Record Result
+                        {fixture?.homeScore !== null && fixture?.homeScore !== undefined &&
+                         fixture?.awayScore !== null && fixture?.awayScore !== undefined
+                          ? 'Update Result'
+                          : 'Record Result'}
                       </Button>
                     </div>
                   </div>
