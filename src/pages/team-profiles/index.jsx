@@ -366,34 +366,50 @@ const TeamProfiles = () => {
   const mappedStatistics = useMemo(() => {
     if (!selectedTeam) return null;
 
+    // Filter completed matches with actual scores from match fixtures
     const completedMatches = (matches || []).filter(
-      (match) =>
-        (match?.matchStatus === 'completed' || match?.matchStatus === 'Final' || match?.matchStatus === 'Completed') &&
-        match?.teamScore !== null &&
-        match?.teamScore !== undefined &&
-        match?.opponentScore !== null &&
-        match?.opponentScore !== undefined &&
-        typeof match?.teamScore === 'number' &&
-        typeof match?.opponentScore === 'number'
+      (match) => {
+        // Check if match has valid scores
+        const hasScores = match?.teamScore !== null &&
+                         match?.teamScore !== undefined &&
+                         match?.opponentScore !== null &&
+                         match?.opponentScore !== undefined &&
+                         typeof match?.teamScore === 'number' &&
+                         typeof match?.opponentScore === 'number';
+        
+        // Check if match is completed (by status or by having scores)
+        const isCompleted = match?.matchStatus === 'completed' || 
+                           match?.matchStatus === 'Final' || 
+                           match?.matchStatus === 'Completed' ||
+                           hasScores; // Include matches with scores even if status wasn't updated
+        
+        return hasScores && isCompleted;
+      }
     );
 
-    const primary = primaryStanding;
-
-    if (!primary && completedMatches.length === 0) {
+    // If no completed matches, return null
+    if (completedMatches.length === 0) {
       return null;
     }
 
-    const gamesPlayedFromStandings = primary?.gamesPlayed;
-    const totalGames = gamesPlayedFromStandings ?? completedMatches.length;
-    const wins = primary?.wins ?? completedMatches.filter((match) => match?.result === 'Win').length;
-    const losses = primary?.losses ?? completedMatches.filter((match) => match?.result === 'Loss').length;
-    const pointsFor = primary?.pointsFor ?? completedMatches.reduce((sum, match) => sum + (match?.teamScore || 0), 0);
-    const pointsAgainst =
-      primary?.pointsAgainst ?? completedMatches.reduce((sum, match) => sum + (match?.opponentScore || 0), 0);
-    const pointDifference = primary?.pointDifference ?? pointsFor - pointsAgainst;
-    const winPercentage = totalGames ? Number(((wins / totalGames) * 100).toFixed(1)) : 0;
-    const pointsPerGame = totalGames ? Number((pointsFor / totalGames).toFixed(1)) : 0;
-    const pointsAllowedPerGame = totalGames ? Number((pointsAgainst / totalGames).toFixed(1)) : 0;
+    // Calculate all statistics directly from actual match results
+    const totalGames = completedMatches.length;
+    const wins = completedMatches.filter((match) => match?.result === 'Win').length;
+    const losses = completedMatches.filter((match) => match?.result === 'Loss').length;
+    const ties = completedMatches.filter((match) => match?.result === 'Tie').length;
+    
+    // Calculate points from actual match scores
+    const pointsFor = completedMatches.reduce((sum, match) => sum + (match?.teamScore || 0), 0);
+    const pointsAgainst = completedMatches.reduce((sum, match) => sum + (match?.opponentScore || 0), 0);
+    const pointDifference = pointsFor - pointsAgainst;
+    
+    // Calculate percentages and averages
+    const winPercentage = totalGames > 0 ? Number(((wins / totalGames) * 100).toFixed(1)) : 0;
+    const pointsPerGame = totalGames > 0 ? Number((pointsFor / totalGames).toFixed(1)) : 0;
+    const pointsAllowedPerGame = totalGames > 0 ? Number((pointsAgainst / totalGames).toFixed(1)) : 0;
+    
+    // Use league position from standings if available, but calculate everything else from matches
+    const primary = primaryStanding;
 
     const performanceTrend = buildPerformanceTrend(completedMatches);
     const scoringTrend = buildScoringTrend(completedMatches);
@@ -413,11 +429,14 @@ const TeamProfiles = () => {
       gamesPlayed: totalGames,
       wins,
       losses,
+      ties, // Include ties in statistics
       winPercentage,
       pointsPerGame,
       pointsAllowedPerGame,
       pointDifference,
-      leaguePosition: primary?.position || null,
+      pointsFor, // Total points scored
+      pointsAgainst, // Total points allowed
+      leaguePosition: primary?.position || null, // League position from standings
       performanceTrend,
       scoringTrend,
       homeRecord,

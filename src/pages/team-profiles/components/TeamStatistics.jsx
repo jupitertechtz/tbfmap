@@ -29,10 +29,13 @@ const TeamStatistics = ({ statistics }) => {
     gamesPlayed = 0,
     wins = 0,
     losses = 0,
+    ties = 0,
     winPercentage = 0,
     pointsPerGame = 0,
     pointsAllowedPerGame = 0,
     pointDifference = 0,
+    pointsFor = 0,
+    pointsAgainst = 0,
     leaguePosition = null,
     performanceTrend = [],
     scoringTrend = [],
@@ -84,8 +87,10 @@ const TeamStatistics = ({ statistics }) => {
         </div>
         <div className="bg-muted rounded-lg p-4 text-center">
           <Icon name="CheckCircle" size={24} className="text-success mx-auto mb-2" />
-          <p className="text-2xl font-bold text-foreground">{wins}-{losses}</p>
-          <p className="text-sm text-muted-foreground">Record</p>
+          <p className="text-2xl font-bold text-foreground">
+            {wins}-{losses}{ties > 0 ? `-${ties}` : ''}
+          </p>
+          <p className="text-sm text-muted-foreground">Record (W-L-T)</p>
         </div>
         <div className="bg-muted rounded-lg p-4 text-center">
           <Icon name="TrendingUp" size={24} className="text-accent mx-auto mb-2" />
@@ -99,12 +104,28 @@ const TeamStatistics = ({ statistics }) => {
         </div>
       </div>
 
-      <div className="bg-muted rounded-lg p-4 mb-8">
-        <h3 className="text-sm text-muted-foreground uppercase tracking-wide">Point Differential</h3>
-        <p className={`text-3xl font-bold ${pointDifference >= 0 ? 'text-success' : 'text-destructive'}`}>
-          {pointDifference >= 0 ? '+' : ''}
-          {pointDifference}
-        </p>
+      {/* Points Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="bg-muted rounded-lg p-4">
+          <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-2">Total Points Scored</h3>
+          <p className="text-3xl font-bold text-primary">{pointsFor || 0}</p>
+          <p className="text-xs text-muted-foreground mt-1">Across all games</p>
+        </div>
+        <div className="bg-muted rounded-lg p-4">
+          <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-2">Total Points Allowed</h3>
+          <p className="text-3xl font-bold text-secondary">{pointsAgainst || 0}</p>
+          <p className="text-xs text-muted-foreground mt-1">Across all games</p>
+        </div>
+        <div className="bg-muted rounded-lg p-4">
+          <h3 className="text-sm text-muted-foreground uppercase tracking-wide mb-2">Point Differential</h3>
+          <p className={`text-3xl font-bold ${pointDifference >= 0 ? 'text-success' : 'text-destructive'}`}>
+            {pointDifference >= 0 ? '+' : ''}
+            {pointDifference}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {pointDifference >= 0 ? 'Positive' : 'Negative'} margin
+          </p>
+        </div>
       </div>
 
       {/* Charts Section */}
