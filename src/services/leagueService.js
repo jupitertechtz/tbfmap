@@ -311,12 +311,12 @@ export const leagueService = {
   async recalculateStandings(leagueId) {
     try {
       // Get all completed matches for this league
-      // Include both 'Final', 'Completed' (capitalized) and 'completed' (lowercase) for backward compatibility
+      // Get all completed matches (database enum only accepts 'completed', not 'Final' or 'Completed')
       const { data: matches, error: matchesError } = await supabase
         ?.from('matches')
         ?.select('id, home_team_id, away_team_id, home_score, away_score, match_status')
         ?.eq('league_id', leagueId)
-        ?.in('match_status', ['Final', 'Completed', 'completed']);
+        ?.in('match_status', ['completed']);
 
       if (matchesError) throw matchesError;
 

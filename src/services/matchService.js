@@ -296,11 +296,11 @@ export const matchService = {
 
       if (error) throw error;
 
-      // Recalculate league standings if match status is Final or Completed
+      // Recalculate league standings if match status is completed
       // and if scores are provided (not null)
-      const isMatchCompleted = (scoreData?.matchStatus === 'Final' || scoreData?.matchStatus === 'Completed') &&
+      const isMatchCompleted = scoreData?.matchStatus === 'completed' &&
                                 scoreData?.homeScore !== null && scoreData?.awayScore !== null;
-      const wasMatchCompleted = existingMatch?.match_status === 'Final' || existingMatch?.match_status === 'Completed';
+      const wasMatchCompleted = existingMatch?.match_status === 'completed';
       
       // Recalculate if:
       // 1. Match is being marked as completed with scores, OR

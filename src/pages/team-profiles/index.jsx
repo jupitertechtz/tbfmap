@@ -387,10 +387,8 @@ const TeamProfiles = () => {
         const matchDate = match?.scheduledDate ? new Date(match.scheduledDate) : null;
         const matchDayHasPassed = matchDate ? matchDate < now : false;
         
-        // Check if match is marked as completed
-        const isCompletedStatus = match?.matchStatus === 'completed' || 
-                                 match?.matchStatus === 'Final' || 
-                                 match?.matchStatus === 'Completed';
+        // Check if match is marked as completed (database enum only accepts 'completed')
+        const isCompletedStatus = match?.matchStatus === 'completed';
         
         // Include only if:
         // - Has scores AND (match day has passed OR status is completed)

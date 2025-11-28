@@ -144,7 +144,7 @@ const MatchesUpdatesPage = () => {
     setEditForm({
       homeScore: homeScore,
       awayScore: awayScore,
-      status: match.status || match.matchStatus || 'Final',
+      status: match.status || match.matchStatus || 'completed',
       notes: match.notes || match.matchNotes || '',
     });
     setEditModalOpen(true);
@@ -169,7 +169,7 @@ const MatchesUpdatesPage = () => {
       away: awayName,
       date: fixtureDate,
       score: hasOfficialScore ? `${fixture.homeScore} - ${fixture.awayScore}` : '0 - 0',
-      status: fixture?.matchStatus || 'Awaiting Update',
+      status: fixture?.matchStatus || 'scheduled',
       notes: fixture?.matchNotes || '',
       // Pass actual score values for easier form population
       homeScore: fixture?.homeScore,
@@ -185,7 +185,7 @@ const MatchesUpdatesPage = () => {
     setEditForm({
       homeScore: '',
       awayScore: '',
-      status: 'Final',
+      status: 'completed',
       notes: '',
     });
   };
@@ -211,15 +211,16 @@ const MatchesUpdatesPage = () => {
       const homeScore = editForm.homeScore ? parseInt(editForm.homeScore, 10) : null;
       const awayScore = editForm.awayScore ? parseInt(editForm.awayScore, 10) : null;
 
-      // If scores are provided, automatically set status to "Final"
+      // If scores are provided, automatically set status to "completed"
       // This ensures matches with results are always marked as completed
+      // Note: Database enum only accepts: 'scheduled', 'live', 'completed', 'postponed', 'cancelled'
       const finalStatus = (homeScore !== null && awayScore !== null) 
-        ? 'Final' 
-        : (editForm.status || 'Scheduled');
+        ? 'completed' 
+        : (editForm.status || 'scheduled');
 
       // Determine if match should be marked as ended
       const now = new Date().toISOString();
-      const shouldEndMatch = finalStatus === 'Final' || finalStatus === 'Completed' || finalStatus === 'completed';
+      const shouldEndMatch = finalStatus === 'completed';
 
       // Update match in database
       await matchService.updateScore(selectedMatch.id, {
@@ -422,25 +423,23 @@ const MatchesUpdatesPage = () => {
                         const hasScores = fixture?.homeScore !== null && fixture?.homeScore !== undefined &&
                                          fixture?.awayScore !== null && fixture?.awayScore !== undefined;
                         const actualStatus = hasScores 
-                          ? (fixture?.matchStatus === 'Final' || fixture?.matchStatus === 'Completed' || fixture?.matchStatus === 'completed' 
-                              ? 'Final' 
-                              : 'Completed')
-                          : (fixture?.matchStatus || 'Scheduled');
+                          ? 'completed'
+                          : (fixture?.matchStatus || 'scheduled');
                         
                         const statusColors = {
-                          'Final': 'bg-success/10 text-success',
-                          'Completed': 'bg-success/10 text-success',
                           'completed': 'bg-success/10 text-success',
-                          'Live': 'bg-error/10 text-error',
                           'live': 'bg-error/10 text-error',
-                          'Scheduled': 'bg-primary/10 text-primary',
                           'scheduled': 'bg-primary/10 text-primary',
-                          'Awaiting Update': 'bg-warning/10 text-warning',
+                          'postponed': 'bg-warning/10 text-warning',
+                          'cancelled': 'bg-muted text-muted-foreground',
                         };
+                        
+                        // Format status for display (capitalize first letter)
+                        const displayStatus = actualStatus.charAt(0).toUpperCase() + actualStatus.slice(1);
                         
                         return (
                           <span className={`text-xs px-2 py-1 rounded-full capitalize ${statusColors[actualStatus] || 'bg-muted text-muted-foreground'}`}>
-                            {actualStatus}
+                            {displayStatus}
                           </span>
                         );
                       })()}
@@ -485,7 +484,7 @@ const MatchesUpdatesPage = () => {
                       <p className="text-lg font-semibold text-foreground">{match.score}</p>
                       <span
                         className={`text-xs px-2 py-1 rounded-full ${
-                          match.status === 'Final'
+                          match.status === 'completed'
                             ? 'bg-success/10 text-success'
                             : 'bg-warning/10 text-warning'
                         }`}
@@ -595,10 +594,11 @@ const MatchesUpdatesPage = () => {
                   onChange={(e) => handleEditFormChange('status', e.target.value)}
                   className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                 >
-                  <option value="Final">Final</option>
-                  <option value="Awaiting Update">Awaiting Update</option>
-                  <option value="Overtime Review">Overtime Review</option>
-                  <option value="Suspended">Suspended</option>
+                  <option value="completed">Completed</option>
+                  <option value="scheduled">Scheduled</option>
+                  <option value="live">Live</option>
+                  <option value="postponed">Postponed</option>
+                  <option value="cancelled">Cancelled</option>
                 </select>
               </div>
 
