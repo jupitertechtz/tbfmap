@@ -36,18 +36,29 @@ const RecentResults = ({ results }) => {
           <div>
             <h2 className="text-xl font-semibold text-foreground">Recent Results</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              Latest completed matches
+              {results?.length > 0 
+                ? `Showing ${results.length} completed match${results.length !== 1 ? 'es' : ''}`
+                : 'No completed matches yet'}
             </p>
           </div>
-          <Button variant="outline" size="sm" iconName="BarChart3" iconPosition="left">
-            All Results
-          </Button>
+          {results?.length > 0 && (
+            <Button variant="outline" size="sm" iconName="BarChart3" iconPosition="left">
+              All Results
+            </Button>
+          )}
         </div>
       </div>
       {/* Desktop List View */}
       <div className="hidden md:block">
-        <div className="divide-y divide-border">
-          {results?.map((result) => {
+        {!results || results.length === 0 ? (
+          <div className="p-12 text-center">
+            <Icon name="CalendarX" size={48} className="text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground">No completed matches to display yet.</p>
+            <p className="text-sm text-muted-foreground mt-2">Results will appear here once matches are completed.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border">
+            {results?.map((result) => {
             const highlight = getMatchHighlight(result?.highlight);
             
             return (
@@ -128,11 +139,18 @@ const RecentResults = ({ results }) => {
               </div>
             );
           })}
-        </div>
+          </div>
+        )}
       </div>
       {/* Mobile Card View */}
       <div className="md:hidden p-4 space-y-4">
-        {results?.map((result) => {
+        {!results || results.length === 0 ? (
+          <div className="p-8 text-center">
+            <Icon name="CalendarX" size={32} className="text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground text-sm">No completed matches to display yet.</p>
+          </div>
+        ) : (
+          results?.map((result) => {
           const highlight = getMatchHighlight(result?.highlight);
           
           return (
@@ -214,7 +232,7 @@ const RecentResults = ({ results }) => {
               </div>
             </div>
           );
-        })}
+        }))}
       </div>
     </div>
   );

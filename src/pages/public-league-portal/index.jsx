@@ -55,8 +55,16 @@ const PublicLeaguePortal = () => {
   useEffect(() => {
     document.title = 'Public League Portal - TBF Registration System';
     loadLeagues();
-    loadFixturesAndResults();
   }, []);
+
+  // Reload fixtures and results when league changes
+  useEffect(() => {
+    if (selectedLeagueId) {
+      loadFixturesAndResults(selectedLeagueId);
+    } else {
+      loadFixturesAndResults();
+    }
+  }, [selectedLeagueId]);
 
   // Load league statistics
   const loadLeagueStatistics = async (leagueId) => {
@@ -235,12 +243,17 @@ const PublicLeaguePortal = () => {
     }
   };
 
-  const loadFixturesAndResults = async () => {
+  const loadFixturesAndResults = async (leagueId = null) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Fetch all matches
-      const allMatches = await matchService.getAll();
+      // Fetch all matches, optionally filtered by league
+      let allMatches = await matchService.getAll();
+      
+      // Filter by selected league if one is selected
+      if (leagueId) {
+        allMatches = allMatches.filter(match => match.leagueId === leagueId);
+      }
       
       // Get current date for filtering
       const now = new Date();
@@ -279,15 +292,27 @@ const PublicLeaguePortal = () => {
         status: match.matchStatus || 'scheduled'
       }));
       
-      // Filter recent results (completed matches)
+      // Filter recent results (all completed matches with scores)
+      // Include matches with status: 'Final', 'Completed', 'completed', or any match with scores
       const completed = allMatches
-        .filter(match => match.matchStatus === 'completed' && match.homeScore !== null && match.awayScore !== null)
+        .filter(match => {
+          const hasScores = match.homeScore !== null && match.homeScore !== undefined &&
+                           match.awayScore !== null && match.awayScore !== undefined;
+          // Include matches that are marked as completed OR have scores (in case status wasn't updated)
+          const isCompleted = match.matchStatus === 'Final' || 
+                             match.matchStatus === 'Completed' || 
+                             match.matchStatus === 'completed' ||
+                             hasScores; // Include any match with scores, regardless of status
+          
+          return hasScores && isCompleted;
+        })
         .sort((a, b) => {
+          // Sort by ended date if available, otherwise by scheduled date
           const dateA = a.endedAt ? new Date(a.endedAt) : (a.scheduledDate ? new Date(a.scheduledDate) : new Date(0));
           const dateB = b.endedAt ? new Date(b.endedAt) : (b.scheduledDate ? new Date(b.scheduledDate) : new Date(0));
           return dateB - dateA; // Most recent first
-        })
-        .slice(0, 10); // Limit to 10 recent results
+        });
+      // Remove limit to show all completed matches
       
       // Transform recent results for component
       const transformedResults = completed.map(match => {
