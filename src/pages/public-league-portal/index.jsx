@@ -183,10 +183,62 @@ const PublicLeaguePortal = () => {
     }
   }, [selectedLeagueId, leagues]);
 
+  // Calculate team form from recent matches (last 5 games: W/L/D)
+  const calculateTeamForm = (teamId, allMatches) => {
+    if (!allMatches || !teamId) return '-----';
+    
+    const now = new Date();
+    
+    // Get team's completed matches, sorted by scheduled date (most recent first)
+    const teamMatches = allMatches
+      .filter(match => {
+        const isTeamMatch = match.homeTeamId === teamId || match.awayTeamId === teamId;
+        const hasScores = match.homeScore !== null && match.homeScore !== undefined &&
+                         match.awayScore !== null && match.awayScore !== undefined;
+        const matchDate = match.scheduledDate ? new Date(match.scheduledDate) : null;
+        const matchDayHasPassed = matchDate ? matchDate < now : false;
+        const isCompleted = match.matchStatus === 'completed';
+        
+        return isTeamMatch && hasScores && (matchDayHasPassed || isCompleted);
+      })
+      .sort((a, b) => {
+        const dateA = a.scheduledDate ? new Date(a.scheduledDate) : new Date(0);
+        const dateB = b.scheduledDate ? new Date(b.scheduledDate) : new Date(0);
+        return dateB - dateA; // Most recent first
+      })
+      .slice(0, 5); // Last 5 matches
+    
+    if (teamMatches.length === 0) return '-----';
+    
+    // Build form string (W = Win, L = Loss, D = Draw/Tie)
+    const form = teamMatches.map(match => {
+      const isHome = match.homeTeamId === teamId;
+      const teamScore = isHome ? match.homeScore : match.awayScore;
+      const opponentScore = isHome ? match.awayScore : match.homeScore;
+      
+      if (teamScore > opponentScore) return 'W';
+      if (teamScore < opponentScore) return 'L';
+      return 'D'; // Draw/Tie
+    }).join('');
+    
+    // Pad with '-' if less than 5 matches
+    return form.padEnd(5, '-');
+  };
+
   const loadStandings = async (leagueId) => {
     setIsLoadingStandings(true);
     try {
       const standings = await leagueService.getStandings(leagueId);
+      
+      // Fetch all matches for this league to calculate form
+      let allMatches = [];
+      try {
+        allMatches = await matchService.getAll();
+        // Filter by league
+        allMatches = allMatches.filter(match => match.leagueId === leagueId);
+      } catch (err) {
+        console.warn('Could not fetch matches for form calculation:', err);
+      }
       
       // Transform database format to component format
       const transformedStandings = standings.map((standing) => {
@@ -202,20 +254,24 @@ const PublicLeaguePortal = () => {
         // If forfeits are tracked: (wins * 2) + (losses * 1) - (forfeits * 1)
         const leaguePoints = (wins * 2) + (losses * 1);
         
+        // Calculate form from recent matches
+        const teamForm = calculateTeamForm(standing.teamId, allMatches);
+        
+        // Ensure all statistics are properly set (including 0 values)
         return {
           id: standing.teamId || standing.id,
           name: standing.team?.name || 'Unknown Team',
           shortName: standing.team?.shortName || 'N/A',
           logo: standing.team?.logoUrl || '/assets/images/no_image.png',
           logoAlt: `${standing.team?.name || 'Team'} logo`,
-          gamesPlayed: standing.gamesPlayed || 0,
-          wins: wins,
-          losses: losses,
-          points: leaguePoints,
-          pointsDiff: standing.pointDifference || 0,
-          position: standing.position, // Keep position for sorting
-          form: '-----', // TODO: Calculate from recent matches
-          positionChange: 0 // TODO: Calculate position change
+          gamesPlayed: standing.gamesPlayed ?? 0, // Use nullish coalescing to preserve 0
+          wins: wins ?? 0,
+          losses: losses ?? 0,
+          points: leaguePoints ?? 0,
+          pointsDiff: standing.pointDifference ?? 0,
+          position: standing.position ?? null, // Keep position for sorting
+          form: teamForm || '-----', // Calculated from recent matches, fallback to '-----'
+          positionChange: 0 // TODO: Calculate position change (requires previous standings data)
         };
       });
       
@@ -315,10 +371,11 @@ const PublicLeaguePortal = () => {
           return hasScores && (matchDayHasPassed || isCompletedStatus);
         })
         .sort((a, b) => {
-          // Sort by ended date if available, otherwise by scheduled date
-          const dateA = a.endedAt ? new Date(a.endedAt) : (a.scheduledDate ? new Date(a.scheduledDate) : new Date(0));
-          const dateB = b.endedAt ? new Date(b.endedAt) : (b.scheduledDate ? new Date(b.scheduledDate) : new Date(0));
-          return dateB - dateA; // Most recent first
+          // Sort by scheduled date (fixture date) - most recent first
+          // Use scheduled date as primary sort, ended date as secondary
+          const dateA = a.scheduledDate ? new Date(a.scheduledDate) : (a.endedAt ? new Date(a.endedAt) : new Date(0));
+          const dateB = b.scheduledDate ? new Date(b.scheduledDate) : (b.endedAt ? new Date(b.endedAt) : new Date(0));
+          return dateB - dateA; // Most recent fixture date first
         });
       // Show all completed matches (no limit)
       
@@ -355,7 +412,7 @@ const PublicLeaguePortal = () => {
         
         return {
           id: match.id,
-          date: match.endedAt || match.scheduledDate,
+          date: match.scheduledDate || match.endedAt, // Use fixture date (scheduled date) as primary
           homeTeam: {
             name: match.homeTeam?.name || 'TBD',
             shortName: match.homeTeam?.shortName || match.homeTeam?.name?.substring(0, 3).toUpperCase() || 'TBD',
