@@ -406,18 +406,28 @@ const PublicLeaguePortal = () => {
         };
       });
       
-      // Sort by position if available, otherwise by points (descending), then by point difference
+      // Sort standings by:
+      // 1. Team points (FIBA points: wins * 2 + losses * 1) - descending (highest first)
+      // 2. Goal difference (+/-) - descending (highest first) when points are tied
       transformedStandings.sort((a, b) => {
-        // If positions are available, sort by position
-        if (a.position !== null && a.position !== undefined && b.position !== null && b.position !== undefined) {
-          return a.position - b.position;
+        // Primary sort: By points (descending)
+        const pointsA = a.points ?? 0;
+        const pointsB = b.points ?? 0;
+        
+        if (pointsA !== pointsB) {
+          return pointsB - pointsA; // Higher points first
         }
         
-        // Otherwise sort by points (descending), then by point difference
-        if (a.points !== b.points) {
-          return b.points - a.points;
-        }
-        return (b.pointsDiff || 0) - (a.pointsDiff || 0);
+        // Secondary sort: By goal difference (+/-) when points are equal (descending)
+        const goalDiffA = a.pointsDiff ?? 0;
+        const goalDiffB = b.pointsDiff ?? 0;
+        
+        return goalDiffB - goalDiffA; // Higher goal difference first
+      });
+      
+      // Update positions based on sorted order
+      transformedStandings.forEach((standing, index) => {
+        standing.position = index + 1;
       });
       
       setStandingsData(transformedStandings);
