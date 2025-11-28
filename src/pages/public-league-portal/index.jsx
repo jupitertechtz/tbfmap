@@ -293,18 +293,29 @@ const PublicLeaguePortal = () => {
       }));
       
       // Filter recent results (all completed matches with scores)
-      // Include matches with status: 'Final', 'Completed', 'completed', or any match with scores
+      // Only include matches where:
+      // 1. Match has scores (completed)
+      // 2. Match day has passed (scheduled date is in the past)
+      // 3. Match status indicates completion
+      const now = new Date();
       const completed = allMatches
         .filter(match => {
           const hasScores = match.homeScore !== null && match.homeScore !== undefined &&
                            match.awayScore !== null && match.awayScore !== undefined;
-          // Include matches that are marked as completed OR have scores (in case status wasn't updated)
-          const isCompleted = match.matchStatus === 'Final' || 
-                             match.matchStatus === 'Completed' || 
-                             match.matchStatus === 'completed' ||
-                             hasScores; // Include any match with scores, regardless of status
           
-          return hasScores && isCompleted;
+          // Check if match day has passed
+          const matchDate = match.scheduledDate ? new Date(match.scheduledDate) : null;
+          const matchDayHasPassed = matchDate ? matchDate < now : false;
+          
+          // Check if match is marked as completed
+          const isCompletedStatus = match.matchStatus === 'Final' || 
+                                    match.matchStatus === 'Completed' || 
+                                    match.matchStatus === 'completed';
+          
+          // Include only if:
+          // - Has scores AND (match day has passed OR status is completed)
+          // This ensures we don't show future games even if they accidentally have scores
+          return hasScores && (matchDayHasPassed || isCompletedStatus);
         })
         .sort((a, b) => {
           // Sort by ended date if available, otherwise by scheduled date
@@ -312,7 +323,7 @@ const PublicLeaguePortal = () => {
           const dateB = b.endedAt ? new Date(b.endedAt) : (b.scheduledDate ? new Date(b.scheduledDate) : new Date(0));
           return dateB - dateA; // Most recent first
         });
-      // Remove limit to show all completed matches
+      // Show all completed matches (no limit)
       
       // Transform recent results for component
       const transformedResults = completed.map(match => {
