@@ -366,7 +366,13 @@ const TeamProfiles = () => {
   const mappedStatistics = useMemo(() => {
     if (!selectedTeam) return null;
 
+    // Get current date/time for filtering
+    const now = new Date();
+
     // Filter completed matches with actual scores from match fixtures
+    // Only include matches where:
+    // 1. Match has valid scores (results recorded)
+    // 2. Match day has passed (scheduled date is in the past) OR match status indicates completion
     const completedMatches = (matches || []).filter(
       (match) => {
         // Check if match has valid scores
@@ -377,13 +383,19 @@ const TeamProfiles = () => {
                          typeof match?.teamScore === 'number' &&
                          typeof match?.opponentScore === 'number';
         
-        // Check if match is completed (by status or by having scores)
-        const isCompleted = match?.matchStatus === 'completed' || 
-                           match?.matchStatus === 'Final' || 
-                           match?.matchStatus === 'Completed' ||
-                           hasScores; // Include matches with scores even if status wasn't updated
+        // Check if match day has passed
+        const matchDate = match?.scheduledDate ? new Date(match.scheduledDate) : null;
+        const matchDayHasPassed = matchDate ? matchDate < now : false;
         
-        return hasScores && isCompleted;
+        // Check if match is marked as completed
+        const isCompletedStatus = match?.matchStatus === 'completed' || 
+                                 match?.matchStatus === 'Final' || 
+                                 match?.matchStatus === 'Completed';
+        
+        // Include only if:
+        // - Has scores AND (match day has passed OR status is completed)
+        // This ensures we don't show future games even if they accidentally have scores
+        return hasScores && (matchDayHasPassed || isCompletedStatus);
       }
     );
 
