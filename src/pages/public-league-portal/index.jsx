@@ -335,9 +335,23 @@ const PublicLeaguePortal = () => {
           highlight = 'close';
         } else if (totalScore >= 180) {
           highlight = 'high-scoring';
-        } else if (match.endedAt && match.scheduledDate && new Date(match.endedAt) > new Date(match.scheduledDate)) {
-          highlight = 'overtime';
         }
+        
+        // Determine if match went to overtime
+        // Overtime occurs when quarter > 4 (basketball has 4 quarters normally)
+        // Only mark as overtime if quarter is explicitly > 4
+        const wentToOvertime = match.quarter && typeof match.quarter === 'number' && match.quarter > 4;
+        
+        // Also check match notes for overtime mentions (case-insensitive)
+        const hasOvertimeInNotes = match.matchNotes && 
+          typeof match.matchNotes === 'string' &&
+          (match.matchNotes.toLowerCase().includes('overtime') || 
+           match.matchNotes.toLowerCase().includes(' ot ') ||
+           match.matchNotes.toLowerCase().includes(' ot\n') ||
+           match.matchNotes.toLowerCase().startsWith('ot ') ||
+           match.matchNotes.toLowerCase().endsWith(' ot'));
+        
+        const overtime = wentToOvertime || hasOvertimeInNotes;
         
         return {
           id: match.id,
@@ -357,7 +371,7 @@ const PublicLeaguePortal = () => {
           homeScore: homeScore,
           awayScore: awayScore,
           venue: match.venue || 'TBD',
-          overtime: false, // Could check if match duration exceeded normal time
+          overtime: overtime,
           highlight: highlight
         };
       });
