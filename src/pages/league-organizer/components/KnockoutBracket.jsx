@@ -681,10 +681,9 @@ const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
                         )}
                       </div>
                     </div>
-                  </div>
-                  
-                  {/* Game Timings Configuration for Series */}
-                  {config.numberOfGames > 1 && (
+                    
+                    {/* Game Timings Configuration for Series */}
+                    {config.numberOfGames > 1 && (
                     <div className="mt-4 pt-4 border-t border-border">
                       <label className="block text-sm font-medium text-foreground mb-3">
                         Game Timings & Schedule
