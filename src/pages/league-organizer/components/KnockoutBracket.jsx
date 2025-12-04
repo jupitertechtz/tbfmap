@@ -216,7 +216,15 @@ const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
         numberOfGames: defaultGames, // Best of X (e.g., 3 = best of 3, 5 = best of 5)
         includeThirdPlace: false, // For semi-finals, option to include third place match
         thirdPlaceStageName: 'Third Place', // Name for third place match stage
-        thirdPlaceGames: 1 // Number of games for third place match
+        thirdPlaceGames: 1, // Number of games for third place match
+        alternateHomeAway: defaultGames > 1, // Alternate home/away for series
+        gameTimings: defaultGames > 1 
+          ? Array.from({ length: defaultGames }, (_, i) => ({
+              gameNumber: i + 1,
+              time: bracketSettings.timeSlot,
+              dateOffset: i // Days offset from series start
+            }))
+          : [] // Game timings for series
       };
     });
 
@@ -278,28 +286,63 @@ const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
           if (match.isBye) return;
 
           // Create multiple matches for series (best of X)
+          const gameTimings = stageConfig.gameTimings || [];
+          
           for (let gameNumber = 1; gameNumber <= numberOfGames; gameNumber++) {
+            // Get timing configuration for this game
+            const gameTiming = gameTimings.find(gt => gt.gameNumber === gameNumber) || {
+              gameNumber,
+              time: bracketSettings.timeSlot,
+              dateOffset: gameNumber - 1
+            };
+            
             // Calculate match date (spread matches across days)
             const matchDateForThisMatch = new Date(matchDate);
-            matchDateForThisMatch.setDate(matchDateForThisMatch.getDate() + daysOffset);
+            matchDateForThisMatch.setDate(matchDateForThisMatch.getDate() + daysOffset + gameTiming.dateOffset);
             
             // Add time to date
-            const [hours, minutes] = bracketSettings.timeSlot.split(':');
+            const [hours, minutes] = gameTiming.time.split(':');
             matchDateForThisMatch.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+            // Alternate home/away teams if configured
+            let homeTeamId, awayTeamId;
+            if (stageConfig.alternateHomeAway && numberOfGames > 1) {
+              // Game 1: team1 home, team2 away
+              // Game 2: team2 home, team1 away
+              // Game 3: team1 home, team2 away (if odd game)
+              // Game 4: team2 home, team1 away (if even game)
+              // etc.
+              if (gameNumber % 2 === 1) {
+                // Odd games: team1 home
+                homeTeamId = match.team1?.id || null;
+                awayTeamId = match.team2?.id || null;
+              } else {
+                // Even games: team2 home
+                homeTeamId = match.team2?.id || null;
+                awayTeamId = match.team1?.id || null;
+              }
+            } else {
+              // No alternation: team1 always home
+              homeTeamId = match.team1?.id || null;
+              awayTeamId = match.team2?.id || null;
+            }
 
             matches.push({
               leagueId,
-              homeTeamId: match.team1?.id || null,
-              awayTeamId: match.team2?.id || null,
+              homeTeamId,
+              awayTeamId,
               scheduledDate: matchDateForThisMatch.toISOString(),
               venue: bracketSettings.venue || 'TBD',
               matchStatus: 'scheduled',
-              matchNotes: `Knockout Bracket - ${stageName} - Series ${match.matchNumber}, Game ${gameNumber} of ${numberOfGames}`
+              matchNotes: `Knockout Bracket - ${stageName} - Series ${match.matchNumber}, Game ${gameNumber} of ${numberOfGames}${stageConfig.alternateHomeAway ? (gameNumber % 2 === 1 ? ' (Home: ' + (match.team1?.name || 'TBD') + ')' : ' (Home: ' + (match.team2?.name || 'TBD') + ')') : ''}`
             });
-
-            // Increment days offset for next game in series
-            daysOffset++;
           }
+
+          // Increment days offset for next series (after all games in current series)
+          const maxDateOffset = gameTimings.length > 0 
+            ? Math.max(...gameTimings.map(gt => gt.dateOffset || 0))
+            : numberOfGames - 1;
+          daysOffset += maxDateOffset + 1;
         });
 
         // Add extra day between rounds
@@ -562,7 +605,24 @@ const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
                         </label>
                         <select
                           value={config.numberOfGames}
-                          onChange={(e) => updateStageConfig(config.roundNumber, 'numberOfGames', parseInt(e.target.value))}
+                          onChange={(e) => {
+                            const newGames = parseInt(e.target.value);
+                            // Update game timings when number of games changes
+                            const newTimings = Array.from({ length: newGames }, (_, i) => {
+                              const existing = config.gameTimings?.find(gt => gt.gameNumber === i + 1);
+                              return existing || {
+                                gameNumber: i + 1,
+                                time: bracketSettings.timeSlot,
+                                dateOffset: i
+                              };
+                            });
+                            updateStageConfig(config.roundNumber, 'numberOfGames', newGames);
+                            updateStageConfig(config.roundNumber, 'gameTimings', newTimings);
+                            // Enable alternation by default for series
+                            if (newGames > 1 && !config.alternateHomeAway) {
+                              updateStageConfig(config.roundNumber, 'alternateHomeAway', true);
+                            }
+                          }}
                           className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
                         >
                           <option value={1}>Single Game</option>
@@ -573,6 +633,17 @@ const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
                         <p className="text-xs text-muted-foreground mt-1">
                           {numMatches} series × {config.numberOfGames} games = {numMatches * config.numberOfGames} total matches
                         </p>
+                        {config.numberOfGames > 1 && (
+                          <label className="flex items-center space-x-2 cursor-pointer mt-2">
+                            <input
+                              type="checkbox"
+                              checked={config.alternateHomeAway ?? true}
+                              onChange={(e) => updateStageConfig(config.roundNumber, 'alternateHomeAway', e.target.checked)}
+                              className="rounded border-border"
+                            />
+                            <span className="text-xs text-foreground">Alternate Home/Away Teams</span>
+                          </label>
+                        )}
                       </div>
                       <div className="flex items-end">
                         {round && round.matches.length === 2 && bracket.rounds.length > 2 && (
@@ -611,10 +682,77 @@ const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
                       </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
+                  
+                  {/* Game Timings Configuration for Series */}
+                  {config.numberOfGames > 1 && (
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <label className="block text-sm font-medium text-foreground mb-3">
+                        Game Timings & Schedule
+                      </label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {Array.from({ length: config.numberOfGames }, (_, index) => {
+                          const gameNumber = index + 1;
+                          const gameTiming = config.gameTimings?.find(gt => gt.gameNumber === gameNumber) || {
+                            gameNumber,
+                            time: bracketSettings.timeSlot,
+                            dateOffset: index
+                          };
+                          
+                          return (
+                            <div key={gameNumber} className="bg-muted/30 rounded-lg p-3 border border-border">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-foreground">Game {gameNumber}</span>
+                              </div>
+                              <div className="space-y-2">
+                                <div>
+                                  <label className="block text-xs text-muted-foreground mb-1">Time</label>
+                                  <input
+                                    type="time"
+                                    value={gameTiming.time}
+                                    onChange={(e) => {
+                                      const updatedTimings = [...(config.gameTimings || [])];
+                                      const existingIndex = updatedTimings.findIndex(gt => gt.gameNumber === gameNumber);
+                                      if (existingIndex >= 0) {
+                                        updatedTimings[existingIndex] = { ...updatedTimings[existingIndex], time: e.target.value };
+                                      } else {
+                                        updatedTimings.push({ gameNumber, time: e.target.value, dateOffset: gameTiming.dateOffset });
+                                      }
+                                      updateStageConfig(config.roundNumber, 'gameTimings', updatedTimings);
+                                    }}
+                                    className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-xs text-muted-foreground mb-1">Days from Series Start</label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={gameTiming.dateOffset}
+                                    onChange={(e) => {
+                                      const updatedTimings = [...(config.gameTimings || [])];
+                                      const existingIndex = updatedTimings.findIndex(gt => gt.gameNumber === gameNumber);
+                                      if (existingIndex >= 0) {
+                                        updatedTimings[existingIndex] = { ...updatedTimings[existingIndex], dateOffset: parseInt(e.target.value) || 0 };
+                                      } else {
+                                        updatedTimings.push({ gameNumber, time: gameTiming.time, dateOffset: parseInt(e.target.value) || 0 });
+                                      }
+                                      updateStageConfig(config.roundNumber, 'gameTimings', updatedTimings);
+                                    }}
+                                    className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
+        </div>
 
           {/* Bracket Preview */}
           <div className="space-y-6">
@@ -636,6 +774,7 @@ const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
                 const stageConfig = stageConfigs.find(c => c.roundNumber === round.roundNumber);
                 const stageName = stageConfig?.stageName || round.name;
                 const numberOfGames = stageConfig?.numberOfGames || 1;
+                const alternateHomeAway = stageConfig?.alternateHomeAway && numberOfGames > 1;
                 
                 return (
                   <div key={round.roundNumber} className="min-w-max">
@@ -644,59 +783,101 @@ const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
                       <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
                         Best of {numberOfGames}
                       </span>
+                      {alternateHomeAway && (
+                        <span className="text-xs px-2 py-1 rounded-full bg-success/10 text-success">
+                          Alternating Home/Away
+                        </span>
+                      )}
                     </div>
-                  <div className="space-y-3">
-                    {round.matches.map((match) => (
-                      <div
-                        key={match.id}
-                        className={`flex items-center gap-4 p-4 rounded-lg border ${
-                          match.isBye
-                            ? 'bg-muted/30 border-muted'
-                            : 'bg-card border-border'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 flex-1">
-                          {match.team1?.logoUrl ? (
-                            <Image
-                              src={match.team1.logoUrl}
-                              alt={match.team1.name}
-                              className="w-8 h-8 rounded object-cover"
-                            />
-                          ) : (
-                            <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
-                              <Icon name="Shield" size={16} className="text-muted-foreground" />
+                    <div className="space-y-3">
+                      {round.matches.map((match) => (
+                        <div key={match.id} className="space-y-2">
+                          {/* Match Header */}
+                          <div
+                            className={`flex items-center gap-4 p-4 rounded-lg border ${
+                              match.isBye
+                                ? 'bg-muted/30 border-muted'
+                                : 'bg-card border-border'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 flex-1">
+                              {match.team1?.logoUrl ? (
+                                <Image
+                                  src={match.team1.logoUrl}
+                                  alt={match.team1.name}
+                                  className="w-8 h-8 rounded object-cover"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
+                                  <Icon name="Shield" size={16} className="text-muted-foreground" />
+                                </div>
+                              )}
+                              <span className="font-medium text-foreground">
+                                {match.team1?.name || 'TBD'}
+                              </span>
+                            </div>
+                            <span className="text-muted-foreground">vs</span>
+                            <div className="flex items-center gap-3 flex-1">
+                              {match.team2?.logoUrl ? (
+                                <Image
+                                  src={match.team2.logoUrl}
+                                  alt={match.team2.name}
+                                  className="w-8 h-8 rounded object-cover"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
+                                  <Icon name="Shield" size={16} className="text-muted-foreground" />
+                                </div>
+                              )}
+                              <span className="font-medium text-foreground">
+                                {match.team2?.name || (match.isBye ? 'Bye' : 'TBD')}
+                              </span>
+                            </div>
+                            {match.isBye && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                                Bye
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Series Games Preview (if best of series) */}
+                          {!match.isBye && numberOfGames > 1 && (
+                            <div className="ml-4 pl-4 border-l-2 border-border space-y-1">
+                              <p className="text-xs font-medium text-muted-foreground mb-2">Series Games:</p>
+                              {Array.from({ length: numberOfGames }, (_, index) => {
+                                const gameNumber = index + 1;
+                                const gameTiming = stageConfig.gameTimings?.find(gt => gt.gameNumber === gameNumber) || {
+                                  gameNumber,
+                                  time: bracketSettings.timeSlot,
+                                  dateOffset: index
+                                };
+                                const homeTeam = alternateHomeAway 
+                                  ? (gameNumber % 2 === 1 ? match.team1 : match.team2)
+                                  : match.team1;
+                                
+                                return (
+                                  <div key={gameNumber} className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <span className="font-medium">Game {gameNumber}:</span>
+                                    <span className="text-foreground">{homeTeam?.name || 'TBD'} (Home)</span>
+                                    <span>vs</span>
+                                    <span className="text-foreground">
+                                      {(alternateHomeAway 
+                                        ? (gameNumber % 2 === 1 ? match.team2 : match.team1)
+                                        : match.team2
+                                      )?.name || 'TBD'} (Away)
+                                    </span>
+                                    <span className="ml-auto">
+                                      {gameTiming.time} • Day +{gameTiming.dateOffset}
+                                    </span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
-                          <span className="font-medium text-foreground">
-                            {match.team1?.name || 'TBD'}
-                          </span>
                         </div>
-                        <span className="text-muted-foreground">vs</span>
-                        <div className="flex items-center gap-3 flex-1">
-                          {match.team2?.logoUrl ? (
-                            <Image
-                              src={match.team2.logoUrl}
-                              alt={match.team2.name}
-                              className="w-8 h-8 rounded object-cover"
-                            />
-                          ) : (
-                            <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
-                              <Icon name="Shield" size={16} className="text-muted-foreground" />
-                            </div>
-                          )}
-                          <span className="font-medium text-foreground">
-                            {match.team2?.name || (match.isBye ? 'Bye' : 'TBD')}
-                          </span>
-                        </div>
-                        {match.isBye && (
-                          <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
-                            Bye
-                          </span>
-                        )}
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
                 );
               })}
             </div>
