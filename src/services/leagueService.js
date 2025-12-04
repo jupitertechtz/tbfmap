@@ -314,7 +314,7 @@ export const leagueService = {
       // Get all completed matches (database enum only accepts 'completed', not 'Final' or 'Completed')
       const { data: matches, error: matchesError } = await supabase
         ?.from('matches')
-        ?.select('id, home_team_id, away_team_id, home_score, away_score, match_status')
+        ?.select('id, home_team_id, away_team_id, home_score, away_score, match_status, match_notes')
         ?.eq('league_id', leagueId)
         ?.in('match_status', ['completed']);
 
@@ -333,6 +333,19 @@ export const leagueService = {
       const standingsMap = new Map();
       leagueTeams?.forEach(({ team_id }) => {
         standingsMap.set(team_id, {
+          // Group stage stats
+          groupGamesPlayed: 0,
+          groupWins: 0,
+          groupLosses: 0,
+          groupPointsFor: 0,
+          groupPointsAgainst: 0,
+          // Knockout stage stats
+          knockoutGamesPlayed: 0,
+          knockoutWins: 0,
+          knockoutLosses: 0,
+          knockoutPointsFor: 0,
+          knockoutPointsAgainst: 0,
+          // Overall stats (for backward compatibility)
           gamesPlayed: 0,
           wins: 0,
           losses: 0,
@@ -341,12 +354,44 @@ export const leagueService = {
         });
       });
 
+      // Helper function to determine if match is knockout stage
+      const isKnockoutMatch = (matchNotes) => {
+        if (!matchNotes) return false;
+        const notes = matchNotes.toLowerCase();
+        return notes.includes('knockout bracket') || 
+               notes.includes('quarter finals') || 
+               notes.includes('semi finals') || 
+               notes.includes('semi-finals') ||
+               notes.includes('third place') ||
+               notes.includes('classification') ||
+               notes.includes('finals');
+      };
+
+      // Helper function to extract knockout stage name
+      const getKnockoutStage = (matchNotes) => {
+        if (!matchNotes) return null;
+        const notes = matchNotes.toLowerCase();
+        if (notes.includes('quarter finals') || notes.includes('quarter-finals')) return 'Quarter Finals';
+        if (notes.includes('semi finals') || notes.includes('semi-finals')) return 'Semi Finals';
+        if (notes.includes('third place')) return 'Third Place';
+        if (notes.includes('classification')) return 'Classification';
+        if (notes.includes('finals') && !notes.includes('semi') && !notes.includes('quarter')) return 'Finals';
+        if (notes.includes('knockout bracket')) {
+          // Try to extract stage from notes
+          const stageMatch = matchNotes.match(/Knockout Bracket - ([^-]+)/);
+          if (stageMatch) return stageMatch[1].trim();
+          return 'Knockout';
+        }
+        return null;
+      };
+
       // Process each completed match
       matches?.forEach((match) => {
         const homeTeamId = match?.home_team_id;
         const awayTeamId = match?.away_team_id;
         const homeScore = match?.home_score;
         const awayScore = match?.away_score;
+        const matchNotes = match?.match_notes;
 
         // Skip if scores are null/undefined or teams are missing
         // Only process matches with valid numeric scores
@@ -370,16 +415,41 @@ export const leagueService = {
           return;
         }
 
+        // Determine if this is a knockout match
+        const isKnockout = isKnockoutMatch(matchNotes);
+
         // Update home team stats
         const homeStats = standingsMap.get(homeTeamId);
         if (homeStats) {
+          // Update overall stats
           homeStats.gamesPlayed += 1;
           homeStats.pointsFor += homeScoreNum;
           homeStats.pointsAgainst += awayScoreNum;
-          if (homeScoreNum > awayScoreNum) {
-            homeStats.wins += 1;
-          } else if (homeScoreNum < awayScoreNum) {
-            homeStats.losses += 1;
+          
+          if (isKnockout) {
+            // Update knockout stats
+            homeStats.knockoutGamesPlayed += 1;
+            homeStats.knockoutPointsFor += homeScoreNum;
+            homeStats.knockoutPointsAgainst += awayScoreNum;
+            if (homeScoreNum > awayScoreNum) {
+              homeStats.knockoutWins += 1;
+              homeStats.wins += 1;
+            } else if (homeScoreNum < awayScoreNum) {
+              homeStats.knockoutLosses += 1;
+              homeStats.losses += 1;
+            }
+          } else {
+            // Update group stage stats
+            homeStats.groupGamesPlayed += 1;
+            homeStats.groupPointsFor += homeScoreNum;
+            homeStats.groupPointsAgainst += awayScoreNum;
+            if (homeScoreNum > awayScoreNum) {
+              homeStats.groupWins += 1;
+              homeStats.wins += 1;
+            } else if (homeScoreNum < awayScoreNum) {
+              homeStats.groupLosses += 1;
+              homeStats.losses += 1;
+            }
           }
           // Ties are counted as games played but neither win nor loss
         }
@@ -387,13 +457,35 @@ export const leagueService = {
         // Update away team stats
         const awayStats = standingsMap.get(awayTeamId);
         if (awayStats) {
+          // Update overall stats
           awayStats.gamesPlayed += 1;
           awayStats.pointsFor += awayScoreNum;
           awayStats.pointsAgainst += homeScoreNum;
-          if (awayScoreNum > homeScoreNum) {
-            awayStats.wins += 1;
-          } else if (awayScoreNum < homeScoreNum) {
-            awayStats.losses += 1;
+          
+          if (isKnockout) {
+            // Update knockout stats
+            awayStats.knockoutGamesPlayed += 1;
+            awayStats.knockoutPointsFor += awayScoreNum;
+            awayStats.knockoutPointsAgainst += homeScoreNum;
+            if (awayScoreNum > homeScoreNum) {
+              awayStats.knockoutWins += 1;
+              awayStats.wins += 1;
+            } else if (awayScoreNum < homeScoreNum) {
+              awayStats.knockoutLosses += 1;
+              awayStats.losses += 1;
+            }
+          } else {
+            // Update group stage stats
+            awayStats.groupGamesPlayed += 1;
+            awayStats.groupPointsFor += awayScoreNum;
+            awayStats.groupPointsAgainst += homeScoreNum;
+            if (awayScoreNum > homeScoreNum) {
+              awayStats.groupWins += 1;
+              awayStats.wins += 1;
+            } else if (awayScoreNum < homeScoreNum) {
+              awayStats.groupLosses += 1;
+              awayStats.losses += 1;
+            }
           }
           // Ties are counted as games played but neither win nor loss
         }

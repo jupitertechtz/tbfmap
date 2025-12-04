@@ -83,10 +83,11 @@ const LeagueStandings = ({ standings, selectedSeason, leagues, selectedLeagueId,
             <tr>
               <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Position</th>
               <th className="text-left py-3 px-6 text-sm font-medium text-muted-foreground">Team</th>
-              <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">GP</th>
-              <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">W</th>
-              <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">L</th>
-              <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">PTS</th>
+              <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">Group GP</th>
+              <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">Group W-L</th>
+              <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">KO GP</th>
+              <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground">KO W-L</th>
+              <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">Total PTS</th>
               <th className="text-center py-3 px-4 text-sm font-medium text-muted-foreground">+/-</th>
               <th className="text-center py-3 px-6 text-sm font-medium text-muted-foreground">Form</th>
             </tr>
@@ -119,10 +120,27 @@ const LeagueStandings = ({ standings, selectedSeason, leagues, selectedLeagueId,
                     </div>
                   </div>
                 </td>
-                <td className="py-4 px-4 text-center text-sm text-foreground">{team?.gamesPlayed ?? 0}</td>
-                <td className="py-4 px-4 text-center text-sm font-medium text-success">{team?.wins ?? 0}</td>
-                <td className="py-4 px-4 text-center text-sm font-medium text-error">{team?.losses ?? 0}</td>
+                {/* Group Stage Stats */}
+                <td className="py-4 px-2 text-center text-sm text-foreground">
+                  {team?.groupGamesPlayed ?? 0}
+                </td>
+                <td className="py-4 px-2 text-center text-sm font-medium">
+                  <span className="text-success">{team?.groupWins ?? 0}</span>
+                  <span className="text-muted-foreground">-</span>
+                  <span className="text-error">{team?.groupLosses ?? 0}</span>
+                </td>
+                {/* Knockout Stage Stats */}
+                <td className="py-4 px-2 text-center text-sm text-foreground">
+                  {team?.knockoutGamesPlayed ?? 0}
+                </td>
+                <td className="py-4 px-2 text-center text-sm font-medium">
+                  <span className="text-success">{team?.knockoutWins ?? 0}</span>
+                  <span className="text-muted-foreground">-</span>
+                  <span className="text-error">{team?.knockoutLosses ?? 0}</span>
+                </td>
+                {/* Total Points */}
                 <td className="py-4 px-4 text-center text-sm font-bold text-foreground">{team?.points ?? 0}</td>
+                {/* Point Difference */}
                 <td className={`py-4 px-4 text-center text-sm font-medium ${
                   (team?.pointsDiff ?? 0) > 0 ? 'text-success' : (team?.pointsDiff ?? 0) < 0 ? 'text-error' : 'text-muted-foreground'
                 }`}>
@@ -164,26 +182,77 @@ const LeagueStandings = ({ standings, selectedSeason, leagues, selectedLeagueId,
               {getPositionChange(team?.positionChange)}
             </div>
             
-            <div className="grid grid-cols-4 gap-4 text-center">
-              <div>
-                <p className="text-xs text-muted-foreground">GP</p>
-                <p className="text-sm font-medium text-foreground">{team?.gamesPlayed ?? 0}</p>
+            <div className="space-y-3">
+              {/* Group Stage */}
+              <div className="bg-muted/30 rounded-lg p-3">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Group Stage</p>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-xs text-muted-foreground">GP</p>
+                    <p className="text-sm font-medium text-foreground">{team?.groupGamesPlayed ?? 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">W-L</p>
+                    <p className="text-sm font-medium text-foreground">
+                      <span className="text-success">{team?.groupWins ?? 0}</span>
+                      <span className="text-muted-foreground">-</span>
+                      <span className="text-error">{team?.groupLosses ?? 0}</span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">+/-</p>
+                    <p className={`text-xs font-medium ${
+                      (team?.groupPointDifference ?? 0) > 0 ? 'text-success' : (team?.groupPointDifference ?? 0) < 0 ? 'text-error' : 'text-muted-foreground'
+                    }`}>
+                      {(team?.groupPointDifference ?? 0) > 0 ? '+' : ''}{team?.groupPointDifference ?? 0}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">W-L</p>
-                <p className="text-sm font-medium text-foreground">{team?.wins ?? 0}-{team?.losses ?? 0}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">PTS</p>
-                <p className="text-sm font-bold text-foreground">{team?.points ?? 0}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">+/-</p>
-                <p className={`text-sm font-medium ${
-                  (team?.pointsDiff ?? 0) > 0 ? 'text-success' : (team?.pointsDiff ?? 0) < 0 ? 'text-error' : 'text-muted-foreground'
-                }`}>
-                  {(team?.pointsDiff ?? 0) > 0 ? '+' : ''}{team?.pointsDiff ?? 0}
-                </p>
+              
+              {/* Knockout Stage */}
+              {(team?.knockoutGamesPlayed ?? 0) > 0 && (
+                <div className="bg-primary/5 rounded-lg p-3 border border-primary/20">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Knockout Stage</p>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <p className="text-xs text-muted-foreground">GP</p>
+                      <p className="text-sm font-medium text-foreground">{team?.knockoutGamesPlayed ?? 0}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">W-L</p>
+                      <p className="text-sm font-medium text-foreground">
+                        <span className="text-success">{team?.knockoutWins ?? 0}</span>
+                        <span className="text-muted-foreground">-</span>
+                        <span className="text-error">{team?.knockoutLosses ?? 0}</span>
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">+/-</p>
+                      <p className={`text-xs font-medium ${
+                        (team?.knockoutPointDifference ?? 0) > 0 ? 'text-success' : (team?.knockoutPointDifference ?? 0) < 0 ? 'text-error' : 'text-muted-foreground'
+                      }`}>
+                        {(team?.knockoutPointDifference ?? 0) > 0 ? '+' : ''}{team?.knockoutPointDifference ?? 0}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Total Stats */}
+              <div className="grid grid-cols-2 gap-4 text-center pt-2 border-t border-border">
+                <div>
+                  <p className="text-xs text-muted-foreground">Total PTS</p>
+                  <p className="text-sm font-bold text-foreground">{team?.points ?? 0}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total +/-</p>
+                  <p className={`text-sm font-medium ${
+                    (team?.pointsDiff ?? 0) > 0 ? 'text-success' : (team?.pointsDiff ?? 0) < 0 ? 'text-error' : 'text-muted-foreground'
+                  }`}>
+                    {(team?.pointsDiff ?? 0) > 0 ? '+' : ''}{team?.pointsDiff ?? 0}
+                  </p>
+                </div>
               </div>
             </div>
             

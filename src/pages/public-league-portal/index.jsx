@@ -246,6 +246,19 @@ const PublicLeaguePortal = () => {
         console.warn('Could not fetch standings from database:', err);
       }
       
+      // Helper function to determine if match is knockout stage
+      const isKnockoutMatch = (matchNotes) => {
+        if (!matchNotes) return false;
+        const notes = matchNotes.toLowerCase();
+        return notes.includes('knockout bracket') || 
+               notes.includes('quarter finals') || 
+               notes.includes('semi finals') || 
+               notes.includes('semi-finals') ||
+               notes.includes('third place') ||
+               notes.includes('classification') ||
+               notes.includes('finals');
+      };
+
       // Calculate statistics from matches for all teams that have played
       const now = new Date();
       const teamStatsMap = new Map();
@@ -265,6 +278,7 @@ const PublicLeaguePortal = () => {
           const awayTeamId = match.awayTeamId;
           const homeScore = Number(match.homeScore) || 0;
           const awayScore = Number(match.awayScore) || 0;
+          const isKnockout = isKnockoutMatch(match.matchNotes);
           
           // Initialize home team stats if not exists
           if (!teamStatsMap.has(homeTeamId)) {
@@ -274,6 +288,16 @@ const PublicLeaguePortal = () => {
               losses: 0,
               pointsFor: 0,
               pointsAgainst: 0,
+              groupGamesPlayed: 0,
+              groupWins: 0,
+              groupLosses: 0,
+              groupPointsFor: 0,
+              groupPointsAgainst: 0,
+              knockoutGamesPlayed: 0,
+              knockoutWins: 0,
+              knockoutLosses: 0,
+              knockoutPointsFor: 0,
+              knockoutPointsAgainst: 0,
               team: match.homeTeam
             });
           }
@@ -286,6 +310,16 @@ const PublicLeaguePortal = () => {
               losses: 0,
               pointsFor: 0,
               pointsAgainst: 0,
+              groupGamesPlayed: 0,
+              groupWins: 0,
+              groupLosses: 0,
+              groupPointsFor: 0,
+              groupPointsAgainst: 0,
+              knockoutGamesPlayed: 0,
+              knockoutWins: 0,
+              knockoutLosses: 0,
+              knockoutPointsFor: 0,
+              knockoutPointsAgainst: 0,
               team: match.awayTeam
             });
           }
@@ -295,10 +329,29 @@ const PublicLeaguePortal = () => {
           homeStats.gamesPlayed += 1;
           homeStats.pointsFor += homeScore;
           homeStats.pointsAgainst += awayScore;
-          if (homeScore > awayScore) {
-            homeStats.wins += 1;
-          } else if (homeScore < awayScore) {
-            homeStats.losses += 1;
+          
+          if (isKnockout) {
+            homeStats.knockoutGamesPlayed += 1;
+            homeStats.knockoutPointsFor += homeScore;
+            homeStats.knockoutPointsAgainst += awayScore;
+            if (homeScore > awayScore) {
+              homeStats.knockoutWins += 1;
+              homeStats.wins += 1;
+            } else if (homeScore < awayScore) {
+              homeStats.knockoutLosses += 1;
+              homeStats.losses += 1;
+            }
+          } else {
+            homeStats.groupGamesPlayed += 1;
+            homeStats.groupPointsFor += homeScore;
+            homeStats.groupPointsAgainst += awayScore;
+            if (homeScore > awayScore) {
+              homeStats.groupWins += 1;
+              homeStats.wins += 1;
+            } else if (homeScore < awayScore) {
+              homeStats.groupLosses += 1;
+              homeStats.losses += 1;
+            }
           }
           
           // Update away team stats
@@ -306,10 +359,29 @@ const PublicLeaguePortal = () => {
           awayStats.gamesPlayed += 1;
           awayStats.pointsFor += awayScore;
           awayStats.pointsAgainst += homeScore;
-          if (awayScore > homeScore) {
-            awayStats.wins += 1;
-          } else if (awayScore < homeScore) {
-            awayStats.losses += 1;
+          
+          if (isKnockout) {
+            awayStats.knockoutGamesPlayed += 1;
+            awayStats.knockoutPointsFor += awayScore;
+            awayStats.knockoutPointsAgainst += homeScore;
+            if (awayScore > homeScore) {
+              awayStats.knockoutWins += 1;
+              awayStats.wins += 1;
+            } else if (awayScore < homeScore) {
+              awayStats.knockoutLosses += 1;
+              awayStats.losses += 1;
+            }
+          } else {
+            awayStats.groupGamesPlayed += 1;
+            awayStats.groupPointsFor += awayScore;
+            awayStats.groupPointsAgainst += homeScore;
+            if (awayScore > homeScore) {
+              awayStats.groupWins += 1;
+              awayStats.wins += 1;
+            } else if (awayScore < homeScore) {
+              awayStats.groupLosses += 1;
+              awayStats.losses += 1;
+            }
           }
         });
       
@@ -319,27 +391,36 @@ const PublicLeaguePortal = () => {
       
       // First, add all teams from database standings
       standings.forEach(standing => {
+        const calculatedStats = teamStatsMap.get(standing.teamId);
         standingsMap.set(standing.teamId, {
           ...standing,
           // Use calculated stats if available, otherwise use database values
-          gamesPlayed: teamStatsMap.has(standing.teamId) 
-            ? teamStatsMap.get(standing.teamId).gamesPlayed 
-            : (standing.gamesPlayed ?? 0),
-          wins: teamStatsMap.has(standing.teamId)
-            ? teamStatsMap.get(standing.teamId).wins
-            : (standing.wins ?? 0),
-          losses: teamStatsMap.has(standing.teamId)
-            ? teamStatsMap.get(standing.teamId).losses
-            : (standing.losses ?? 0),
-          pointsFor: teamStatsMap.has(standing.teamId)
-            ? teamStatsMap.get(standing.teamId).pointsFor
-            : (standing.pointsFor ?? 0),
-          pointsAgainst: teamStatsMap.has(standing.teamId)
-            ? teamStatsMap.get(standing.teamId).pointsAgainst
-            : (standing.pointsAgainst ?? 0),
-          pointDifference: teamStatsMap.has(standing.teamId)
-            ? (teamStatsMap.get(standing.teamId).pointsFor - teamStatsMap.get(standing.teamId).pointsAgainst)
+          gamesPlayed: calculatedStats?.gamesPlayed ?? (standing.gamesPlayed ?? 0),
+          wins: calculatedStats?.wins ?? (standing.wins ?? 0),
+          losses: calculatedStats?.losses ?? (standing.losses ?? 0),
+          pointsFor: calculatedStats?.pointsFor ?? (standing.pointsFor ?? 0),
+          pointsAgainst: calculatedStats?.pointsAgainst ?? (standing.pointsAgainst ?? 0),
+          pointDifference: calculatedStats 
+            ? (calculatedStats.pointsFor - calculatedStats.pointsAgainst)
             : (standing.pointDifference ?? 0),
+          // Group stage stats
+          groupGamesPlayed: calculatedStats?.groupGamesPlayed ?? 0,
+          groupWins: calculatedStats?.groupWins ?? 0,
+          groupLosses: calculatedStats?.groupLosses ?? 0,
+          groupPointsFor: calculatedStats?.groupPointsFor ?? 0,
+          groupPointsAgainst: calculatedStats?.groupPointsAgainst ?? 0,
+          groupPointDifference: calculatedStats 
+            ? (calculatedStats.groupPointsFor - calculatedStats.groupPointsAgainst)
+            : 0,
+          // Knockout stage stats
+          knockoutGamesPlayed: calculatedStats?.knockoutGamesPlayed ?? 0,
+          knockoutWins: calculatedStats?.knockoutWins ?? 0,
+          knockoutLosses: calculatedStats?.knockoutLosses ?? 0,
+          knockoutPointsFor: calculatedStats?.knockoutPointsFor ?? 0,
+          knockoutPointsAgainst: calculatedStats?.knockoutPointsAgainst ?? 0,
+          knockoutPointDifference: calculatedStats 
+            ? (calculatedStats.knockoutPointsFor - calculatedStats.knockoutPointsAgainst)
+            : 0,
         });
       });
       
@@ -357,7 +438,21 @@ const PublicLeaguePortal = () => {
             pointDifference: stats.pointsFor - stats.pointsAgainst,
             winPercentage: stats.gamesPlayed > 0 ? (stats.wins / stats.gamesPlayed) * 100 : 0,
             position: null,
-            team: stats.team
+            team: stats.team,
+            // Group stage stats
+            groupGamesPlayed: stats.groupGamesPlayed ?? 0,
+            groupWins: stats.groupWins ?? 0,
+            groupLosses: stats.groupLosses ?? 0,
+            groupPointsFor: stats.groupPointsFor ?? 0,
+            groupPointsAgainst: stats.groupPointsAgainst ?? 0,
+            groupPointDifference: (stats.groupPointsFor ?? 0) - (stats.groupPointsAgainst ?? 0),
+            // Knockout stage stats
+            knockoutGamesPlayed: stats.knockoutGamesPlayed ?? 0,
+            knockoutWins: stats.knockoutWins ?? 0,
+            knockoutLosses: stats.knockoutLosses ?? 0,
+            knockoutPointsFor: stats.knockoutPointsFor ?? 0,
+            knockoutPointsAgainst: stats.knockoutPointsAgainst ?? 0,
+            knockoutPointDifference: (stats.knockoutPointsFor ?? 0) - (stats.knockoutPointsAgainst ?? 0),
           });
         }
       });
@@ -389,6 +484,7 @@ const PublicLeaguePortal = () => {
         
         // Ensure all statistics are properly set (including 0 values)
         // Use calculated values from matches as source of truth
+        // Include group and knockout stage statistics
         return {
           id: standing.teamId || standing.id,
           name: teamInfo.name || 'Unknown Team',
@@ -402,7 +498,17 @@ const PublicLeaguePortal = () => {
           pointsDiff: standing.pointDifference ?? 0, // Use calculated point difference
           position: standing.position ?? null, // Keep position for sorting
           form: teamForm || '-----', // Calculated from recent matches, fallback to '-----'
-          positionChange: 0 // TODO: Calculate position change (requires previous standings data)
+          positionChange: 0, // TODO: Calculate position change (requires previous standings data)
+          // Group stage stats
+          groupGamesPlayed: standing.groupGamesPlayed ?? 0,
+          groupWins: standing.groupWins ?? 0,
+          groupLosses: standing.groupLosses ?? 0,
+          groupPointDifference: standing.groupPointDifference ?? 0,
+          // Knockout stage stats
+          knockoutGamesPlayed: standing.knockoutGamesPlayed ?? 0,
+          knockoutWins: standing.knockoutWins ?? 0,
+          knockoutLosses: standing.knockoutLosses ?? 0,
+          knockoutPointDifference: standing.knockoutPointDifference ?? 0,
         };
       });
       
