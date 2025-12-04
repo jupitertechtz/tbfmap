@@ -13,8 +13,10 @@ const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
     startDate: '',
     venue: '',
     timeSlot: '14:00',
-    bracketType: 'single-elimination' // single-elimination, double-elimination
+    bracketType: 'single-elimination', // single-elimination, double-elimination
+    stageConfigs: [] // Will be populated when bracket is generated
   });
+  const [stageConfigs, setStageConfigs] = useState([]); // Stage configurations
   const [isLoading, setIsLoading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState(null);
@@ -187,13 +189,71 @@ const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
       roundNumber++;
     }
 
+    // Initialize stage configurations with default values
+    const defaultStageConfigs = rounds.map((round, index) => {
+      let defaultName = round.name;
+      let defaultGames = 1; // Single game by default
+      
+      // Set default names and games based on round
+      if (round.name === 'Final') {
+        defaultName = 'Finals';
+        defaultGames = 1;
+      } else if (round.name === 'Semi-Finals') {
+        defaultName = 'Semi Finals';
+        defaultGames = 1;
+      } else if (round.matches.length === 4) {
+        defaultName = 'Quarter Finals';
+        defaultGames = 1;
+      } else if (round.matches.length === 2 && rounds.length > 2) {
+        // Check if there's a third place match possibility
+        defaultName = 'Semi Finals';
+        defaultGames = 1;
+      }
+      
+      return {
+        roundNumber: round.roundNumber,
+        stageName: defaultName,
+        numberOfGames: defaultGames, // Best of X (e.g., 3 = best of 3, 5 = best of 5)
+        includeThirdPlace: false, // For semi-finals, option to include third place match
+        thirdPlaceStageName: 'Third Place', // Name for third place match stage
+        thirdPlaceGames: 1 // Number of games for third place match
+      };
+    });
+
+    setStageConfigs(defaultStageConfigs);
+
+    const calculateTotalMatches = (rounds, configs) => {
+      return rounds.reduce((sum, round) => {
+        const config = configs.find(c => c.roundNumber === round.roundNumber);
+        const gamesPerSeries = config?.numberOfGames || 1;
+        const numSeries = round.matches.filter(m => !m.isBye).length;
+        let total = sum + (numSeries * gamesPerSeries);
+        
+        // Add third place match if configured
+        if (config?.includeThirdPlace && round.matches.length === 2) {
+          const thirdPlaceGames = 1; // Default to 1 game for third place
+          total += thirdPlaceGames;
+        }
+        
+        return total;
+      }, 0);
+    };
+
     setBracket({
       rounds,
-      totalMatches: rounds.reduce((sum, round) => sum + round.matches.length, 0),
+      totalMatches: calculateTotalMatches(rounds, defaultStageConfigs),
       startDate: bracketSettings.startDate,
       venue: bracketSettings.venue,
       timeSlot: bracketSettings.timeSlot
     });
+  };
+
+  const updateStageConfig = (roundNumber, field, value) => {
+    setStageConfigs(prev => prev.map(config => 
+      config.roundNumber === roundNumber
+        ? { ...config, [field]: value }
+        : config
+    ));
   };
 
   const saveBracket = async () => {
@@ -209,30 +269,35 @@ const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
 
       // Generate matches for each round
       bracket.rounds.forEach((round, roundIndex) => {
+        const stageConfig = stageConfigs.find(c => c.roundNumber === round.roundNumber);
+        const stageName = stageConfig?.stageName || round.name;
+        const numberOfGames = stageConfig?.numberOfGames || 1;
+
         round.matches.forEach((match, matchIndex) => {
           // Skip bye matches (they don't need to be created)
           if (match.isBye) return;
 
-          // Calculate match date (spread matches across days)
-          const matchDateForThisMatch = new Date(matchDate);
-          matchDateForThisMatch.setDate(matchDateForThisMatch.getDate() + daysOffset);
-          
-          // Add time to date
-          const [hours, minutes] = bracketSettings.timeSlot.split(':');
-          matchDateForThisMatch.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+          // Create multiple matches for series (best of X)
+          for (let gameNumber = 1; gameNumber <= numberOfGames; gameNumber++) {
+            // Calculate match date (spread matches across days)
+            const matchDateForThisMatch = new Date(matchDate);
+            matchDateForThisMatch.setDate(matchDateForThisMatch.getDate() + daysOffset);
+            
+            // Add time to date
+            const [hours, minutes] = bracketSettings.timeSlot.split(':');
+            matchDateForThisMatch.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-          matches.push({
-            leagueId,
-            homeTeamId: match.team1?.id || null,
-            awayTeamId: match.team2?.id || null,
-            scheduledDate: matchDateForThisMatch.toISOString(),
-            venue: bracketSettings.venue || 'TBD',
-            matchStatus: 'scheduled',
-            matchNotes: `Knockout Bracket - ${round.name} - Match ${match.matchNumber}${match.isBye ? ' (Bye)' : ''}`
-          });
+            matches.push({
+              leagueId,
+              homeTeamId: match.team1?.id || null,
+              awayTeamId: match.team2?.id || null,
+              scheduledDate: matchDateForThisMatch.toISOString(),
+              venue: bracketSettings.venue || 'TBD',
+              matchStatus: 'scheduled',
+              matchNotes: `Knockout Bracket - ${stageName} - Series ${match.matchNumber}, Game ${gameNumber} of ${numberOfGames}`
+            });
 
-          // Increment days offset for next match (you can customize spacing)
-          if ((matchIndex + 1) % 2 === 0) {
+            // Increment days offset for next game in series
             daysOffset++;
           }
         });
@@ -240,6 +305,34 @@ const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
         // Add extra day between rounds
         if (roundIndex < bracket.rounds.length - 1) {
           daysOffset++;
+        }
+
+        // Add third place match if configured for semi-finals
+        // Check if this is the semi-finals round (2 matches) and third place is enabled
+        if (stageConfig?.includeThirdPlace && round.matches.length === 2) {
+          const thirdPlaceStageName = stageConfig.thirdPlaceStageName || 'Third Place';
+          const thirdPlaceGames = stageConfig.thirdPlaceGames || 1;
+          
+          // Add third place match after semi-finals
+          for (let gameNumber = 1; gameNumber <= thirdPlaceGames; gameNumber++) {
+            const matchDateForThisMatch = new Date(matchDate);
+            matchDateForThisMatch.setDate(matchDateForThisMatch.getDate() + daysOffset);
+            
+            const [hours, minutes] = bracketSettings.timeSlot.split(':');
+            matchDateForThisMatch.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+            matches.push({
+              leagueId,
+              homeTeamId: null, // Will be determined by semi-final losers
+              awayTeamId: null,
+              scheduledDate: matchDateForThisMatch.toISOString(),
+              venue: bracketSettings.venue || 'TBD',
+              matchStatus: 'scheduled',
+              matchNotes: `Knockout Bracket - ${thirdPlaceStageName} - Game ${gameNumber} of ${thirdPlaceGames}`
+            });
+
+            daysOffset++;
+          }
         }
       });
 
@@ -432,6 +525,97 @@ const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
         </>
       ) : (
         <>
+          {/* Stage Configuration */}
+          <div className="space-y-4 bg-muted/30 rounded-lg p-4 border border-border">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-medium text-foreground">Stage Configuration</h3>
+                <p className="text-sm text-muted-foreground">
+                  Configure stage names and number of games per series
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {stageConfigs.map((config) => {
+                const round = bracket.rounds.find(r => r.roundNumber === config.roundNumber);
+                const numMatches = round?.matches.filter(m => !m.isBye).length || 0;
+                
+                return (
+                  <div key={config.roundNumber} className="bg-card rounded-lg p-4 border border-border">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Stage Name
+                        </label>
+                        <input
+                          type="text"
+                          value={config.stageName}
+                          onChange={(e) => updateStageConfig(config.roundNumber, 'stageName', e.target.value)}
+                          placeholder="e.g., Quarter Finals, Semi Finals, Finals"
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">
+                          Number of Games (Best of X)
+                        </label>
+                        <select
+                          value={config.numberOfGames}
+                          onChange={(e) => updateStageConfig(config.roundNumber, 'numberOfGames', parseInt(e.target.value))}
+                          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                        >
+                          <option value={1}>Single Game</option>
+                          <option value={3}>Best of 3</option>
+                          <option value={5}>Best of 5</option>
+                          <option value={7}>Best of 7</option>
+                        </select>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {numMatches} series × {config.numberOfGames} games = {numMatches * config.numberOfGames} total matches
+                        </p>
+                      </div>
+                      <div className="flex items-end">
+                        {round && round.matches.length === 2 && bracket.rounds.length > 2 && (
+                          <div className="space-y-2">
+                            <label className="flex items-center space-x-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={config.includeThirdPlace}
+                                onChange={(e) => updateStageConfig(config.roundNumber, 'includeThirdPlace', e.target.checked)}
+                                className="rounded border-border"
+                              />
+                              <span className="text-sm text-foreground">Include Third Place Match</span>
+                            </label>
+                            {config.includeThirdPlace && (
+                              <div className="ml-6 space-y-2">
+                                <input
+                                  type="text"
+                                  value={config.thirdPlaceStageName || 'Third Place'}
+                                  onChange={(e) => updateStageConfig(config.roundNumber, 'thirdPlaceStageName', e.target.value)}
+                                  placeholder="Third Place / Classification"
+                                  className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
+                                />
+                                <select
+                                  value={config.thirdPlaceGames || 1}
+                                  onChange={(e) => updateStageConfig(config.roundNumber, 'thirdPlaceGames', parseInt(e.target.value))}
+                                  className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
+                                >
+                                  <option value={1}>Single Game</option>
+                                  <option value={3}>Best of 3</option>
+                                  <option value={5}>Best of 5</option>
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Bracket Preview */}
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -448,9 +632,19 @@ const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
             </div>
 
             <div className="space-y-8 overflow-x-auto">
-              {bracket.rounds.map((round, roundIndex) => (
-                <div key={round.roundNumber} className="min-w-max">
-                  <h4 className="text-md font-semibold text-foreground mb-4">{round.name}</h4>
+              {bracket.rounds.map((round, roundIndex) => {
+                const stageConfig = stageConfigs.find(c => c.roundNumber === round.roundNumber);
+                const stageName = stageConfig?.stageName || round.name;
+                const numberOfGames = stageConfig?.numberOfGames || 1;
+                
+                return (
+                  <div key={round.roundNumber} className="min-w-max">
+                    <div className="flex items-center gap-3 mb-4">
+                      <h4 className="text-md font-semibold text-foreground">{stageName}</h4>
+                      <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                        Best of {numberOfGames}
+                      </span>
+                    </div>
                   <div className="space-y-3">
                     {round.matches.map((match) => (
                       <div
@@ -503,12 +697,22 @@ const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
                     ))}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="bg-muted/30 rounded-lg p-4">
               <p className="text-sm text-muted-foreground">
-                <strong>Total Matches:</strong> {bracket.totalMatches} matches will be created
+                <strong>Total Matches:</strong> {stageConfigs.reduce((sum, config) => {
+                  const round = bracket.rounds.find(r => r.roundNumber === config.roundNumber);
+                  const numSeries = round?.matches.filter(m => !m.isBye).length || 0;
+                  let matches = numSeries * config.numberOfGames;
+                  if (config.includeThirdPlace && numSeries === 2) {
+                    const thirdPlaceGames = config.thirdPlaceGames || 1;
+                    matches += thirdPlaceGames; // Third place match games
+                  }
+                  return sum + matches;
+                }, 0)} matches will be created
               </p>
               <p className="text-sm text-muted-foreground mt-1">
                 <strong>Start Date:</strong> {new Date(bracketSettings.startDate).toLocaleDateString()}
@@ -518,6 +722,26 @@ const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
                   <strong>Venue:</strong> {bracketSettings.venue}
                 </p>
               )}
+              <div className="mt-2 pt-2 border-t border-border">
+                <p className="text-xs font-medium text-foreground mb-1">Stage Breakdown:</p>
+                {stageConfigs.map((config) => {
+                  const round = bracket.rounds.find(r => r.roundNumber === config.roundNumber);
+                  const numSeries = round?.matches.filter(m => !m.isBye).length || 0;
+                  let matches = numSeries * config.numberOfGames;
+                  if (config.includeThirdPlace && numSeries === 2) {
+                    const thirdPlaceGames = config.thirdPlaceGames || 1;
+                    matches += thirdPlaceGames; // Third place match games
+                  }
+                  return (
+                    <p key={config.roundNumber} className="text-xs text-muted-foreground">
+                      • {config.stageName}: {numSeries} series × {config.numberOfGames} games = {numSeries * config.numberOfGames} matches
+                      {config.includeThirdPlace && numSeries === 2 && (
+                        <span> + {config.thirdPlaceGames || 1} {config.thirdPlaceStageName || 'Third Place'} match(es)</span>
+                      )}
+                    </p>
+                  );
+                })}
+              </div>
             </div>
           </div>
 
