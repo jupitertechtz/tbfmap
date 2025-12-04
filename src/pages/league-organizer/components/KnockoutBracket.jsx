@@ -1,0 +1,545 @@
+import React, { useState, useEffect } from 'react';
+import Icon from '../../../components/AppIcon';
+import Button from '../../../components/ui/Button';
+import Image from '../../../components/AppImage';
+import { leagueService } from '../../../services/leagueService';
+import { matchService } from '../../../services/matchService';
+
+const KnockoutBracket = ({ leagueId, leagueDetails, onClose, onSuccess }) => {
+  const [qualifiedTeams, setQualifiedTeams] = useState([]);
+  const [selectedTeams, setSelectedTeams] = useState([]);
+  const [bracket, setBracket] = useState(null);
+  const [bracketSettings, setBracketSettings] = useState({
+    startDate: '',
+    venue: '',
+    timeSlot: '14:00',
+    bracketType: 'single-elimination' // single-elimination, double-elimination
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+
+  // Load qualified teams from league standings
+  useEffect(() => {
+    if (leagueId) {
+      loadQualifiedTeams();
+    }
+  }, [leagueId]);
+
+  const loadQualifiedTeams = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      // Get standings to determine qualified teams
+      const standings = await leagueService.getStandings(leagueId);
+      
+      // Sort by position and get top teams (assuming top teams qualify)
+      // You can customize this logic based on your qualification criteria
+      const sortedStandings = standings
+        .filter(s => s.gamesPlayed > 0) // Only teams that have played
+        .sort((a, b) => {
+          // Sort by position if available
+          if (a.position && b.position) {
+            return a.position - b.position;
+          }
+          // Otherwise sort by points
+          const pointsA = (a.wins || 0) * 2 + (a.losses || 0);
+          const pointsB = (b.wins || 0) * 2 + (b.losses || 0);
+          if (pointsB !== pointsA) return pointsB - pointsA;
+          return (b.pointDifference || 0) - (a.pointDifference || 0);
+        });
+
+      // Get team details for qualified teams
+      const teamsWithDetails = sortedStandings.map(standing => ({
+        id: standing.teamId,
+        name: standing.team?.name || 'Unknown Team',
+        shortName: standing.team?.shortName || 'N/A',
+        logoUrl: standing.team?.logoUrl || null,
+        position: standing.position,
+        points: (standing.wins || 0) * 2 + (standing.losses || 0),
+        pointDifference: standing.pointDifference || 0,
+        gamesPlayed: standing.gamesPlayed || 0,
+        wins: standing.wins || 0,
+        losses: standing.losses || 0
+      }));
+
+      setQualifiedTeams(teamsWithDetails);
+    } catch (err) {
+      console.error('Error loading qualified teams:', err);
+      setError(err.message || 'Failed to load qualified teams');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const toggleTeamSelection = (teamId) => {
+    setSelectedTeams(prev => 
+      prev.includes(teamId)
+        ? prev.filter(id => id !== teamId)
+        : [...prev, teamId]
+    );
+  };
+
+  const generateBracket = () => {
+    if (selectedTeams.length < 2) {
+      setError('Please select at least 2 teams for the knockout bracket');
+      return;
+    }
+
+    // Check if number of teams is power of 2, if not, add byes
+    const numTeams = selectedTeams.length;
+    const nextPowerOf2 = Math.pow(2, Math.ceil(Math.log2(numTeams)));
+    const numByes = nextPowerOf2 - numTeams;
+
+    // Get selected team details
+    const teams = qualifiedTeams.filter(t => selectedTeams.includes(t.id));
+    
+    // Shuffle teams randomly or keep them in order (you can customize this)
+    const shuffledTeams = [...teams].sort(() => Math.random() - 0.5);
+    
+    // Generate bracket structure (single elimination)
+    const rounds = [];
+    let currentRound = shuffledTeams.map((team, index) => ({
+      id: `match-${index}`,
+      team1: team,
+      team2: null, // Will be filled in next round
+      winner: null,
+      matchNumber: index + 1
+    }));
+
+    // Add byes if needed
+    if (numByes > 0) {
+      // Teams with byes advance automatically
+      const teamsWithByes = currentRound.slice(0, numByes);
+      teamsWithByes.forEach(match => {
+        match.team2 = null;
+        match.winner = match.team1;
+      });
+    }
+
+    // Pair up teams for first round
+    const firstRoundMatches = [];
+    const teamsToPair = currentRound.slice(numByes);
+    
+    for (let i = 0; i < teamsToPair.length; i += 2) {
+      if (i + 1 < teamsToPair.length) {
+        firstRoundMatches.push({
+          id: `match-${firstRoundMatches.length + 1}`,
+          team1: teamsToPair[i].team1,
+          team2: teamsToPair[i + 1].team1,
+          winner: null,
+          matchNumber: firstRoundMatches.length + 1,
+          round: 1
+        });
+      }
+    }
+
+    // Add bye matches to first round
+    const byeMatches = currentRound.slice(0, numByes).map((match, index) => ({
+      id: `match-bye-${index + 1}`,
+      team1: match.team1,
+      team2: null,
+      winner: match.team1,
+      matchNumber: firstRoundMatches.length + index + 1,
+      round: 1,
+      isBye: true
+    }));
+
+    rounds.push({
+      roundNumber: 1,
+      name: 'Round of ' + nextPowerOf2,
+      matches: [...firstRoundMatches, ...byeMatches]
+    });
+
+    // Generate subsequent rounds
+    let roundNumber = 2;
+    let previousRoundMatches = rounds[0].matches;
+    
+    while (previousRoundMatches.length > 1) {
+      const nextRoundMatches = [];
+      const roundName = previousRoundMatches.length === 2 
+        ? 'Final' 
+        : previousRoundMatches.length === 4 
+        ? 'Semi-Finals' 
+        : `Round ${roundNumber}`;
+
+      for (let i = 0; i < previousRoundMatches.length; i += 2) {
+        nextRoundMatches.push({
+          id: `match-r${roundNumber}-${nextRoundMatches.length + 1}`,
+          team1: null, // Winner of previous match
+          team2: null, // Winner of previous match
+          winner: null,
+          matchNumber: nextRoundMatches.length + 1,
+          round: roundNumber,
+          previousMatch1: previousRoundMatches[i]?.id,
+          previousMatch2: previousRoundMatches[i + 1]?.id
+        });
+      }
+
+      rounds.push({
+        roundNumber,
+        name: roundName,
+        matches: nextRoundMatches
+      });
+
+      previousRoundMatches = nextRoundMatches;
+      roundNumber++;
+    }
+
+    setBracket({
+      rounds,
+      totalMatches: rounds.reduce((sum, round) => sum + round.matches.length, 0),
+      startDate: bracketSettings.startDate,
+      venue: bracketSettings.venue,
+      timeSlot: bracketSettings.timeSlot
+    });
+  };
+
+  const saveBracket = async () => {
+    if (!bracket || !leagueId) return;
+
+    setIsGenerating(true);
+    setError(null);
+
+    try {
+      const matches = [];
+      let matchDate = new Date(bracketSettings.startDate);
+      let daysOffset = 0;
+
+      // Generate matches for each round
+      bracket.rounds.forEach((round, roundIndex) => {
+        round.matches.forEach((match, matchIndex) => {
+          // Skip bye matches (they don't need to be created)
+          if (match.isBye) return;
+
+          // Calculate match date (spread matches across days)
+          const matchDateForThisMatch = new Date(matchDate);
+          matchDateForThisMatch.setDate(matchDateForThisMatch.getDate() + daysOffset);
+          
+          // Add time to date
+          const [hours, minutes] = bracketSettings.timeSlot.split(':');
+          matchDateForThisMatch.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+          matches.push({
+            leagueId,
+            homeTeamId: match.team1?.id || null,
+            awayTeamId: match.team2?.id || null,
+            scheduledDate: matchDateForThisMatch.toISOString(),
+            venue: bracketSettings.venue || 'TBD',
+            matchStatus: 'scheduled',
+            matchNotes: `Knockout Bracket - ${round.name} - Match ${match.matchNumber}${match.isBye ? ' (Bye)' : ''}`
+          });
+
+          // Increment days offset for next match (you can customize spacing)
+          if ((matchIndex + 1) % 2 === 0) {
+            daysOffset++;
+          }
+        });
+
+        // Add extra day between rounds
+        if (roundIndex < bracket.rounds.length - 1) {
+          daysOffset++;
+        }
+      });
+
+      // Create matches in database
+      const createPromises = matches.map(matchData => 
+        matchService.create(matchData)
+      );
+
+      await Promise.all(createPromises);
+
+      setSuccess(`Successfully created ${matches.length} knockout bracket matches!`);
+      
+      if (onSuccess) {
+        onSuccess();
+      }
+
+      // Close modal after a delay
+      setTimeout(() => {
+        if (onClose) {
+          onClose();
+        }
+      }, 2000);
+    } catch (err) {
+      console.error('Error saving bracket:', err);
+      setError(err.message || 'Failed to save knockout bracket');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">Create Knockout Bracket</h2>
+          <p className="text-sm text-muted-foreground">
+            Select teams that have qualified past the group stage
+          </p>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onClose} iconName="X" />
+      </div>
+
+      {error && (
+        <div className="px-4 py-3 rounded-lg border bg-destructive/10 border-destructive/20 text-destructive">
+          <div className="flex items-start gap-3">
+            <Icon name="AlertTriangle" size={18} />
+            <p className="font-medium">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="px-4 py-3 rounded-lg border bg-success/10 border-success/20 text-success">
+          <div className="flex items-start gap-3">
+            <Icon name="CheckCircle2" size={18} />
+            <p className="font-medium">{success}</p>
+          </div>
+        </div>
+      )}
+
+      {!bracket ? (
+        <>
+          {/* Settings */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={bracketSettings.startDate}
+                  onChange={(e) => setBracketSettings(prev => ({ ...prev, startDate: e.target.value }))}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Time Slot
+                </label>
+                <input
+                  type="time"
+                  value={bracketSettings.timeSlot}
+                  onChange={(e) => setBracketSettings(prev => ({ ...prev, timeSlot: e.target.value }))}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Venue
+              </label>
+              <input
+                type="text"
+                value={bracketSettings.venue}
+                onChange={(e) => setBracketSettings(prev => ({ ...prev, venue: e.target.value }))}
+                placeholder="Enter venue name"
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground"
+              />
+            </div>
+          </div>
+
+          {/* Qualified Teams Selection */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium text-foreground">Select Qualified Teams</h3>
+              <p className="text-sm text-muted-foreground">
+                {selectedTeams.length} team(s) selected
+              </p>
+            </div>
+
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Icon name="Loader2" size={32} className="text-primary animate-spin" />
+              </div>
+            ) : qualifiedTeams.length === 0 ? (
+              <div className="text-center py-12 bg-muted/30 rounded-lg">
+                <Icon name="Users" size={48} className="text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No qualified teams found</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Teams need to have played at least one match to qualify
+                </p>
+              </div>
+            ) : (
+              <div className="max-h-96 overflow-y-auto space-y-2 border border-border rounded-lg p-4">
+                {qualifiedTeams.map((team) => {
+                  const isSelected = selectedTeams.includes(team.id);
+                  return (
+                    <div
+                      key={team.id}
+                      onClick={() => toggleTeamSelection(team.id)}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                        isSelected
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                        isSelected
+                          ? 'border-primary bg-primary'
+                          : 'border-border'
+                      }`}>
+                        {isSelected && (
+                          <Icon name="Check" size={14} className="text-primary-foreground" />
+                        )}
+                      </div>
+                      {team.logoUrl ? (
+                        <Image
+                          src={team.logoUrl}
+                          alt={team.name}
+                          className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                          <Icon name="Shield" size={20} className="text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-foreground truncate">{team.name}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          {team.position && <span>Position: #{team.position}</span>}
+                          <span>•</span>
+                          <span>PTS: {team.points}</span>
+                          <span>•</span>
+                          <span>W-L: {team.wins}-{team.losses}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-border">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              onClick={generateBracket}
+              disabled={selectedTeams.length < 2 || !bracketSettings.startDate}
+              iconName="Zap"
+              iconPosition="left"
+            >
+              Generate Bracket
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Bracket Preview */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium text-foreground">Bracket Preview</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setBracket(null)}
+                iconName="Edit"
+                iconPosition="left"
+              >
+                Edit Teams
+              </Button>
+            </div>
+
+            <div className="space-y-8 overflow-x-auto">
+              {bracket.rounds.map((round, roundIndex) => (
+                <div key={round.roundNumber} className="min-w-max">
+                  <h4 className="text-md font-semibold text-foreground mb-4">{round.name}</h4>
+                  <div className="space-y-3">
+                    {round.matches.map((match) => (
+                      <div
+                        key={match.id}
+                        className={`flex items-center gap-4 p-4 rounded-lg border ${
+                          match.isBye
+                            ? 'bg-muted/30 border-muted'
+                            : 'bg-card border-border'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 flex-1">
+                          {match.team1?.logoUrl ? (
+                            <Image
+                              src={match.team1.logoUrl}
+                              alt={match.team1.name}
+                              className="w-8 h-8 rounded object-cover"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
+                              <Icon name="Shield" size={16} className="text-muted-foreground" />
+                            </div>
+                          )}
+                          <span className="font-medium text-foreground">
+                            {match.team1?.name || 'TBD'}
+                          </span>
+                        </div>
+                        <span className="text-muted-foreground">vs</span>
+                        <div className="flex items-center gap-3 flex-1">
+                          {match.team2?.logoUrl ? (
+                            <Image
+                              src={match.team2.logoUrl}
+                              alt={match.team2.name}
+                              className="w-8 h-8 rounded object-cover"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded bg-muted flex items-center justify-center">
+                              <Icon name="Shield" size={16} className="text-muted-foreground" />
+                            </div>
+                          )}
+                          <span className="font-medium text-foreground">
+                            {match.team2?.name || (match.isBye ? 'Bye' : 'TBD')}
+                          </span>
+                        </div>
+                        {match.isBye && (
+                          <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                            Bye
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-muted/30 rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">
+                <strong>Total Matches:</strong> {bracket.totalMatches} matches will be created
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                <strong>Start Date:</strong> {new Date(bracketSettings.startDate).toLocaleDateString()}
+              </p>
+              {bracketSettings.venue && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  <strong>Venue:</strong> {bracketSettings.venue}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-border">
+            <Button variant="outline" onClick={() => setBracket(null)}>
+              Back
+            </Button>
+            <Button
+              variant="default"
+              onClick={saveBracket}
+              loading={isGenerating}
+              iconName="Save"
+              iconPosition="left"
+            >
+              Save Bracket
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+export default KnockoutBracket;
+

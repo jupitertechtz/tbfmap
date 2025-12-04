@@ -13,6 +13,7 @@ import { matchService } from '../../services/matchService';
 import { teamService } from '../../services/teamService';
 import Image from '../../components/AppImage';
 import { exportFixturesToPDF, exportFixturesToExcel, exportFixturesToWord } from '../../utils/fixtureExportUtils';
+import KnockoutBracket from './components/KnockoutBracket';
 
 const LeagueOrganizer = () => {
   const navigate = useNavigate();
@@ -60,6 +61,9 @@ const LeagueOrganizer = () => {
   const [manageTeamsTab, setManageTeamsTab] = useState('current'); // 'current' or 'add'
   const [teamsToRemove, setTeamsToRemove] = useState([]);
   const [isRemovingTeams, setIsRemovingTeams] = useState(false);
+
+  // Knockout bracket modal states
+  const [isKnockoutBracketModalOpen, setIsKnockoutBracketModalOpen] = useState(false);
 
   // Fixtures sorting and filtering states
   const [fixtureSortBy, setFixtureSortBy] = useState('date'); // 'date', 'team', 'venue', 'time'
@@ -873,6 +877,15 @@ const LeagueOrganizer = () => {
                             size="sm"
                           >
                             Edit
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => setIsKnockoutBracketModalOpen(true)}
+                            iconName="GitBranch"
+                            size="sm"
+                            disabled={!leagueDetails.teams || leagueDetails.teams.length < 2}
+                          >
+                            Create Knockout Bracket
                           </Button>
                           <Button
                             variant="default"
@@ -1955,6 +1968,27 @@ const LeagueOrganizer = () => {
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Knockout Bracket Modal */}
+          {isKnockoutBracketModalOpen && selectedLeague && leagueDetails && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsKnockoutBracketModalOpen(false)} />
+              <div className="relative bg-card border border-border rounded-lg modal-shadow w-full max-w-5xl max-h-[90vh] overflow-y-auto">
+                <div className="p-6">
+                  <KnockoutBracket
+                    leagueId={selectedLeague}
+                    leagueDetails={leagueDetails}
+                    onClose={() => setIsKnockoutBracketModalOpen(false)}
+                    onSuccess={() => {
+                      setSuccess('Knockout bracket created successfully!');
+                      loadLeagueDetails(selectedLeague);
+                      setTimeout(() => setSuccess(null), 3000);
+                    }}
+                  />
                 </div>
               </div>
             </div>
