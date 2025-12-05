@@ -550,11 +550,13 @@ const PublicLeaguePortal = () => {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Link to="/admin-dashboard">
-                <Button variant="outline" iconName="LayoutDashboard" size="sm">
-                  Admin Dashboard
-                </Button>
-              </Link>
+              {isAuthenticated && (
+                <Link to="/admin-dashboard">
+                  <Button variant="outline" iconName="LayoutDashboard" size="sm">
+                    Admin Dashboard
+                  </Button>
+                </Link>
+              )}
               {isAuthenticated ? (
                 <Button 
                   variant="default" 
