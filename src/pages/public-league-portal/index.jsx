@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import LeagueStandings from './components/LeagueStandings';
@@ -9,8 +9,11 @@ import SearchAndFilters from './components/SearchAndFilters';
 import { matchService } from '../../services/matchService';
 import { leagueService } from '../../services/leagueService';
 import { playerService } from '../../services/playerService';
+import { useAuth } from '../../contexts/AuthContext';
 
 const PublicLeaguePortal = () => {
+  const navigate = useNavigate();
+  const { user, userProfile, loading: authLoading, isAuthenticated } = useAuth();
   const [selectedSeason, setSelectedSeason] = useState('2024-25');
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({});
@@ -537,7 +540,7 @@ const PublicLeaguePortal = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <header className="bg-card border-b border-border shadow-sm">
+      <header className="bg-green-100 border-b border-green-200 shadow-sm">
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -552,9 +555,25 @@ const PublicLeaguePortal = () => {
                   Admin Dashboard
                 </Button>
               </Link>
-              <Button variant="default" iconName="User" size="sm">
-                My Profile
-              </Button>
+              {isAuthenticated ? (
+                <Button 
+                  variant="default" 
+                  iconName="User" 
+                  size="sm"
+                  onClick={() => navigate('/profile')}
+                >
+                  My Profile
+                </Button>
+              ) : (
+                <Button 
+                  variant="default" 
+                  iconName="LogIn" 
+                  size="sm"
+                  onClick={() => navigate('/login')}
+                >
+                  Sign In
+                </Button>
+              )}
             </div>
           </div>
         </div>
