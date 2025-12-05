@@ -633,6 +633,16 @@ const PublicLeaguePortal = () => {
                 </div>
               </div>
 
+              {/* League Standings */}
+              <LeagueStandings 
+                standings={standingsData} 
+                selectedSeason={selectedSeason} 
+                leagues={leagues}
+                selectedLeagueId={selectedLeagueId}
+                onLeagueChange={handleLeagueChange}
+                isLoading={isLoadingStandings}
+              />
+
               {/* Upcoming Fixtures */}
               <UpcomingFixtures fixtures={upcomingFixtures} isLoading={isLoading} />
 
@@ -678,16 +688,6 @@ const PublicLeaguePortal = () => {
                   </div>
                 )}
               </div>
-
-              {/* League Standings */}
-              <LeagueStandings 
-                standings={standingsData} 
-                selectedSeason={selectedSeason} 
-                leagues={leagues}
-                selectedLeagueId={selectedLeagueId}
-                onLeagueChange={handleLeagueChange}
-                isLoading={isLoadingStandings}
-              />
             </div>
           </div>
         )}
