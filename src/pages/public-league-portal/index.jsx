@@ -536,26 +536,31 @@ const PublicLeaguePortal = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="container mx-auto py-8 px-4">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-4xl font-extrabold text-primary">TBF League Portal</h1>
-            <p className="text-lg text-muted-foreground mt-2">
-              Follow your favorite teams, check standings, and stay updated with the latest results.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link to="/admin-dashboard">
-              <Button variant="outline" iconName="LayoutDashboard">
-                Admin Dashboard
+      {/* Header */}
+      <header className="bg-card border-b border-border shadow-sm">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-primary">Tanzania Basketball Portal</h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Official portal for Tanzania Basketball Federation leagues and competitions
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link to="/admin-dashboard">
+                <Button variant="outline" iconName="LayoutDashboard" size="sm">
+                  Admin Dashboard
+                </Button>
+              </Link>
+              <Button variant="default" iconName="User" size="sm">
+                My Profile
               </Button>
-            </Link>
-            <Button variant="default" iconName="User">
-              My Profile
-            </Button>
+            </div>
           </div>
         </div>
+      </header>
+
+      <div className="container mx-auto py-8 px-4">
 
         {error && (
           <div className="mb-6 px-4 py-3 rounded-lg border bg-destructive/10 border-destructive/20 text-destructive">
@@ -659,11 +664,39 @@ const PublicLeaguePortal = () => {
 
             {/* Sidebar */}
             <div className="lg:col-span-1 space-y-8">
+              {/* About Tanzania Basketball Portal */}
+              <div className="bg-card rounded-lg border border-border card-shadow p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <Icon name="Info" size={20} className="text-primary" />
+                  </div>
+                  <h2 className="text-xl font-semibold text-foreground">About Tanzania Basketball Portal</h2>
+                </div>
+                <div className="space-y-3 text-sm text-muted-foreground">
+                  <p>
+                    Welcome to the official Tanzania Basketball Federation (TBF) portal. 
+                    Stay updated with the latest league standings, match fixtures, results, 
+                    and team statistics.
+                  </p>
+                  <p>
+                    Follow your favorite teams, track player performances, and never miss 
+                    an important game in the Tanzania Basketball League.
+                  </p>
+                  <div className="pt-3 border-t border-border">
+                    <p className="font-medium text-foreground mb-1">Contact TBF</p>
+                    <p className="text-xs">Email: info@tanzaniabasketball.com</p>
+                    <p className="text-xs">Phone: +255 XXX XXX XXX</p>
+                  </div>
+                </div>
+              </div>
+
               {/* League Statistics */}
               <div className="bg-card rounded-lg border border-border card-shadow p-6">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <Icon name="BarChart3" size={20} className="text-primary" />
+                  </div>
                   <h2 className="text-xl font-semibold text-foreground">League Statistics</h2>
-                  <Icon name="BarChart3" size={20} className="text-muted-foreground" />
                 </div>
                 {isLoadingStats ? (
                   <div className="py-8 text-center">
@@ -694,6 +727,67 @@ const PublicLeaguePortal = () => {
                     </div>
                   </div>
                 )}
+              </div>
+
+              {/* Follow TBF */}
+              <div className="bg-card rounded-lg border border-border card-shadow p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <Icon name="Share2" size={20} className="text-primary" />
+                  </div>
+                  <h2 className="text-xl font-semibold text-foreground">Follow TBF</h2>
+                </div>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Stay connected with Tanzania Basketball Federation on social media 
+                    and get the latest updates, news, and announcements.
+                  </p>
+                  <div className="flex flex-wrap gap-3">
+                    <a 
+                      href="https://facebook.com/tanzaniabasketball" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+                    >
+                      <Icon name="Share2" size={16} />
+                      <span>Facebook</span>
+                    </a>
+                    <a 
+                      href="https://twitter.com/tanzaniabasketball" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition-colors text-sm"
+                    >
+                      <Icon name="Share2" size={16} />
+                      <span>Twitter</span>
+                    </a>
+                    <a 
+                      href="https://instagram.com/tanzaniabasketball" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg transition-colors text-sm"
+                    >
+                      <Icon name="Share2" size={16} />
+                      <span>Instagram</span>
+                    </a>
+                  </div>
+                  <div className="pt-3 border-t border-border">
+                    <p className="text-sm font-medium text-foreground mb-2">Newsletter</p>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Subscribe to receive updates about leagues, matches, and events.
+                    </p>
+                    <div className="flex gap-2">
+                      <input
+                        type="email"
+                        placeholder="Enter your email"
+                        className="flex-1 px-3 py-2 text-sm rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                      <Button variant="default" size="sm" iconName="Mail">
+                        Subscribe
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
