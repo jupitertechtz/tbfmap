@@ -272,12 +272,19 @@ const PublicLeaguePortal = () => {
       });
       
       // Convert to object format for easier access in component
+      // This structure ensures standings are organized by stage (Group Stage, Quarter Finals, etc.)
       const standingsData = {};
       transformedStandingsByStage.forEach((standings, stage) => {
         standingsData[stage] = standings;
       });
       
+      // Always set as object (even if empty) to ensure stage-organized view is used
       setStandingsData(standingsData);
+      
+      // Debug: Log the structure to verify it's correct
+      if (Object.keys(standingsData).length > 0) {
+        console.log('Standings organized by stage:', Object.keys(standingsData));
+      }
     } catch (err) {
       console.error('Error loading standings:', err);
       setError(err.message || 'Failed to load standings');

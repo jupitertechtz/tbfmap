@@ -202,7 +202,13 @@ const LeagueStandings = ({ standings, selectedSeason, leagues, selectedLeagueId,
   };
 
   // Check if standings is organized by stage (object) or is a flat array (legacy)
-  const isOrganizedByStage = standings && typeof standings === 'object' && !Array.isArray(standings);
+  // Always treat as stage-organized if it's an object (not an array)
+  // The standings data structure should be: { 'Group Stage': [...], 'Quarter Finals': [...], etc. }
+  // Even an empty object {} should be treated as stage-organized (will show empty state)
+  const isOrganizedByStage = standings && 
+                             typeof standings === 'object' && 
+                             !Array.isArray(standings) && 
+                             standings !== null;
   
   // Define stage order and display names
   const stageOrder = ['Group Stage', 'Quarter Finals', 'Semi Finals', 'Third Place', 'Classification', 'Finals'];
@@ -215,9 +221,22 @@ const LeagueStandings = ({ standings, selectedSeason, leagues, selectedLeagueId,
     'Finals': 'Finals'
   };
   
-  // If organized by stage, render separate tables for each stage
+  // Always render stage-organized view if standings is an object
+  // This ensures separate tables for each stage (Group Stage, Quarter Finals, Semi Finals, etc.)
   if (isOrganizedByStage) {
-    const stagesWithData = stageOrder.filter(stage => standings[stage] && standings[stage].length > 0);
+    const stagesWithData = stageOrder.filter(stage => {
+      const stageStandings = standings[stage];
+      return stageStandings && Array.isArray(stageStandings) && stageStandings.length > 0;
+    });
+    
+    if (stagesWithData.length === 0 && !isLoading) {
+      return (
+        <div className="bg-card rounded-lg border border-border card-shadow p-12 text-center">
+          <Icon name="Trophy" size={48} className="text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground">No standings available for this league.</p>
+        </div>
+      );
+    }
     
     return (
       <div className="space-y-8">
@@ -235,12 +254,6 @@ const LeagueStandings = ({ standings, selectedSeason, leagues, selectedLeagueId,
             getPositionChange={getPositionChange}
           />
         ))}
-        {stagesWithData.length === 0 && !isLoading && (
-          <div className="bg-card rounded-lg border border-border card-shadow p-12 text-center">
-            <Icon name="Trophy" size={48} className="text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground">No standings available for this league.</p>
-          </div>
-        )}
       </div>
     );
   }
