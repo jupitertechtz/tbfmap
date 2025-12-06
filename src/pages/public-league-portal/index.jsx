@@ -582,6 +582,60 @@ const PublicLeaguePortal = () => {
       </header>
 
       <div className="container mx-auto py-8 px-4">
+        {/* Navigation Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {/* Team Profiles Card */}
+          <Link 
+            to="/team-profiles" 
+            className="bg-card rounded-lg border border-border card-shadow p-6 hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
+          >
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-green-700 rounded-lg flex items-center justify-center mb-4">
+                <Icon name="Users" size={32} className="text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground">Team Profiles</h3>
+            </div>
+          </Link>
+
+          {/* Player Stats Card */}
+          <Link 
+            to="/player-statistics" 
+            className="bg-card rounded-lg border border-border card-shadow p-6 hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
+          >
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-green-700 rounded-lg flex items-center justify-center mb-4">
+                <Icon name="BarChart3" size={32} className="text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground">Player Stats</h3>
+            </div>
+          </Link>
+
+          {/* Match Center Card */}
+          <Link 
+            to="/match-center" 
+            className="bg-card rounded-lg border border-border card-shadow p-6 hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
+          >
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center mb-4">
+                <Icon name="Calendar" size={32} className="text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground">Match Center</h3>
+            </div>
+          </Link>
+
+          {/* League Information Card */}
+          <Link 
+            to="/games-management" 
+            className="bg-card rounded-lg border border-border card-shadow p-6 hover:shadow-lg transition-all hover:scale-105 cursor-pointer"
+          >
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-orange-600 rounded-lg flex items-center justify-center mb-4">
+                <Icon name="Settings" size={32} className="text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground">League Information</h3>
+            </div>
+          </Link>
+        </div>
 
         {error && (
           <div className="mb-6 px-4 py-3 rounded-lg border bg-destructive/10 border-destructive/20 text-destructive">
@@ -705,8 +759,8 @@ const PublicLeaguePortal = () => {
                   </p>
                   <div className="pt-3 border-t border-border">
                     <p className="font-medium text-foreground mb-1">Contact TBF</p>
-                    <p className="text-xs">Email: info@tanzaniabasketball.com</p>
-                    <p className="text-xs">Phone: +255 XXX XXX XXX</p>
+                    <p className="text-xs">Email: info[at]tbf.or.tz</p>
+                    <p className="text-xs">Phone: +255 786 070762</p>
                   </div>
                 </div>
               </div>
@@ -765,7 +819,7 @@ const PublicLeaguePortal = () => {
                   </p>
                   <div className="flex flex-wrap gap-3">
                     <a 
-                      href="https://facebook.com/tanzaniabasketball" 
+                      href="https://facebook.com/tzbasketball" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
@@ -774,7 +828,7 @@ const PublicLeaguePortal = () => {
                       <span>Facebook</span>
                     </a>
                     <a 
-                      href="https://twitter.com/tanzaniabasketball" 
+                      href="https://twitter.com/tzbasketball" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg transition-colors text-sm"
@@ -783,7 +837,7 @@ const PublicLeaguePortal = () => {
                       <span>Twitter</span>
                     </a>
                     <a 
-                      href="https://instagram.com/tanzaniabasketball" 
+                      href="https://instagram.com/tzball" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg transition-colors text-sm"
