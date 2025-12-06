@@ -790,5 +790,48 @@ export const leagueService = {
     } catch (error) {
       throw new Error(error.message || 'Failed to delete file');
     }
+  },
+
+  // Delete league (with validation)
+  async delete(leagueId) {
+    try {
+      // Check if league has teams
+      const { data: leagueTeams, error: teamsError } = await supabase
+        ?.from('league_teams')
+        ?.select('id')
+        ?.eq('league_id', leagueId)
+        ?.limit(1);
+
+      if (teamsError) throw teamsError;
+
+      if (leagueTeams && leagueTeams.length > 0) {
+        throw new Error('Cannot delete league: League has existing teams. Please remove all teams first.');
+      }
+
+      // Check if league has matches
+      const { data: matches, error: matchesError } = await supabase
+        ?.from('matches')
+        ?.select('id')
+        ?.eq('league_id', leagueId)
+        ?.limit(1);
+
+      if (matchesError) throw matchesError;
+
+      if (matches && matches.length > 0) {
+        throw new Error('Cannot delete league: League has existing match schedules. Please remove all matches first.');
+      }
+
+      // Delete league (cascade will handle related records)
+      const { error: deleteError } = await supabase
+        ?.from('leagues')
+        ?.delete()
+        ?.eq('id', leagueId);
+
+      if (deleteError) throw deleteError;
+
+      return true;
+    } catch (error) {
+      throw new Error(error.message || 'Failed to delete league');
+    }
   }
 };

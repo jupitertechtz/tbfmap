@@ -65,6 +65,10 @@ const LeagueOrganizer = () => {
   // Knockout bracket modal states
   const [isKnockoutBracketModalOpen, setIsKnockoutBracketModalOpen] = useState(false);
 
+  // Delete league modal states
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeletingLeague, setIsDeletingLeague] = useState(false);
+
   // Fixtures sorting and filtering states
   const [fixtureSortBy, setFixtureSortBy] = useState('date'); // 'date', 'team', 'venue', 'time'
   const [fixtureSortOrder, setFixtureSortOrder] = useState('asc'); // 'asc' or 'desc'
@@ -631,6 +635,36 @@ const LeagueOrganizer = () => {
     team.city?.toLowerCase().includes(teamSearchTerm.toLowerCase())
   );
 
+  // Handle delete league
+  const handleDeleteLeague = async () => {
+    if (!selectedLeague) return;
+
+    setIsDeletingLeague(true);
+    setError(null);
+
+    try {
+      await leagueService.delete(selectedLeague);
+      setSuccess('League deleted successfully!');
+      
+      // Clear selected league and reload leagues
+      setSelectedLeague(null);
+      setLeagueDetails(null);
+      setLeagueFixtures([]);
+      await loadLeagues();
+      
+      // Close modal after a short delay
+      setTimeout(() => {
+        setIsDeleteModalOpen(false);
+        setSuccess(null);
+      }, 2000);
+    } catch (err) {
+      console.error('Error deleting league:', err);
+      setError(err.message || 'Failed to delete league');
+    } finally {
+      setIsDeletingLeague(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return '-';
     try {
@@ -895,6 +929,14 @@ const LeagueOrganizer = () => {
                             disabled={!leagueDetails.teams || leagueDetails.teams.length < 2}
                           >
                             Generate Fixtures
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            onClick={() => setIsDeleteModalOpen(true)}
+                            iconName="Trash2"
+                            size="sm"
+                          >
+                            Delete
                           </Button>
                         </div>
                       </div>
@@ -1989,6 +2031,84 @@ const LeagueOrganizer = () => {
                       setTimeout(() => setSuccess(null), 3000);
                     }}
                   />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Delete League Confirmation Modal */}
+          {isDeleteModalOpen && selectedLeague && leagueDetails && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsDeleteModalOpen(false)} />
+              <div className="relative bg-card border border-border rounded-lg modal-shadow w-full max-w-md">
+                <div className="p-6">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center">
+                      <Icon name="AlertTriangle" size={24} className="text-destructive" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-foreground">Delete League</h3>
+                      <p className="text-sm text-muted-foreground mt-1">This action cannot be undone</p>
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <p className="text-foreground mb-2">
+                      Are you sure you want to delete <span className="font-semibold">{leagueDetails.name}</span>?
+                    </p>
+                    <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
+                      <p className="text-muted-foreground">
+                        <Icon name="Info" size={16} className="inline mr-2" />
+                        This will permanently delete the league and all associated data.
+                      </p>
+                      {leagueDetails.teams && leagueDetails.teams.length > 0 && (
+                        <p className="text-warning">
+                          <Icon name="AlertCircle" size={16} className="inline mr-2" />
+                          This league has {leagueDetails.teams.length} team(s). All teams must be removed first.
+                        </p>
+                      )}
+                      {leagueFixtures && leagueFixtures.length > 0 && (
+                        <p className="text-warning">
+                          <Icon name="AlertCircle" size={16} className="inline mr-2" />
+                          This league has {leagueFixtures.length} match(es). All matches must be removed first.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div className="mb-4 px-4 py-3 rounded-lg border bg-destructive/10 border-destructive/20 text-destructive text-sm">
+                      {error}
+                    </div>
+                  )}
+
+                  {success && (
+                    <div className="mb-4 px-4 py-3 rounded-lg border bg-success/10 border-success/20 text-success text-sm">
+                      {success}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsDeleteModalOpen(false);
+                        setError(null);
+                      }}
+                      disabled={isDeletingLeague}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      onClick={handleDeleteLeague}
+                      loading={isDeletingLeague}
+                      iconName="Trash2"
+                      iconPosition="left"
+                    >
+                      {isDeletingLeague ? 'Deleting...' : 'Delete League'}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
