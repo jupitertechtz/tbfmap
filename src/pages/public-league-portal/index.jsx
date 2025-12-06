@@ -837,7 +837,7 @@ const PublicLeaguePortal = () => {
                       <span>Twitter</span>
                     </a>
                     <a 
-                      href="https://instagram.com/tzball" 
+                      href="https://instagram.com/tzbball" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg transition-colors text-sm"
