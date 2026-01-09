@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Background Circle with Green (TBF colors) -->
+  <circle cx="32" cy="32" r="30" fill="#16a34a"/>
+  
+  <!-- Basketball Icon -->
+  <g transform="translate(32, 28)">
+    <!-- Basketball shape -->
+    <ellipse cx="0" cy="0" rx="14" ry="16" fill="#ffffff" opacity="0.95"/>
+    
+    <!-- Basketball lines -->
+    <line x1="-14" y1="0" x2="14" y2="0" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M -14 0 Q 0 -8 14 0" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M -14 0 Q 0 8 14 0" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="0" y1="-16" x2="0" y2="16" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round"/>
+  </g>
+  
+  <!-- TBF Text -->
+  <text x="32" y="52" font-family="Arial, sans-serif" font-size="11" font-weight="bold" fill="#ffffff" text-anchor="middle" letter-spacing="1">TBF</text>
+</svg>
